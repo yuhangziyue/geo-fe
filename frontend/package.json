@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@geo/backend": "workspace:*",
+    "better-sqlite3": "11",
     "echarts": "5",
     "next": "15",
     "react": "19",

@@ -34,6 +34,7 @@ importers:
       '@types/react': '19'
       '@types/react-dom': '19'
       autoprefixer: ^10.6.1
+      better-sqlite3: '11'
       echarts: '5'
       next: '15'
       postcss: ^8.5.31
@@ -44,6 +45,7 @@ importers:
       zod: '3'
     dependencies:
       '@geo/backend': link:../backend
+      better-sqlite3: 11.10.0
       echarts: 5.6.0
       next: 15.5.28_njqajwu2n3rdytxcnwppkilz6m
       react: 19.3.1

@@ -1,6 +1,6 @@
 import type { EChartsOption } from 'echarts';
 import type { ChartTable } from './EChart';
-import type { Summary } from './types';
+import type { SummaryV2 as Summary } from './types';
 
 // Pure builders: summary data → chart option + the same numbers as a table (for screen readers and copying).
 

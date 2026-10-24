@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { Summary } from './types';
+import type { SummaryV2 as Summary } from './types';
 
 /** Visibility per intent type. Labels come from the dataset, which does not define them. */
 export function IntentCards({ data, hrefFor }: { data: Summary; hrefFor: (intent: string) => string }) {

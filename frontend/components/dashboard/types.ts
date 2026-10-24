@@ -1,11 +1,51 @@
-// Response shapes of /api/dashboard/* — owned by the backend, imported as types only (nothing ships to the client).
+// Response shapes of /api/dashboard/* — owned by the backend; components import them from here, never keep a copy.
+// Owner: T0 (see __contracts__/README.md). Types are erased at build time; the few values below are tiny constants.
+
+// e2 (v2) shapes, kept only while the old components exist. F1/F2 delete those components; T-END removes these.
 export type {
-  Citation,
-  Facets,
   Insight,
   MetricRow as Kpi,
-  Question,
   QuestionDetailResponse as QuestionDetail,
-  QuestionPageResponse as QuestionPage,
-  SummaryResponse as Summary,
+  SummaryResponse as SummaryV2,
 } from '@geo/backend/dashboard/schema';
+
+// Shared by v2 and v3.
+export type { Citation, Facets, Platform, Question, QuestionPageResponse as QuestionPage } from '@geo/backend/dashboard/schema';
+
+// v3 contract.
+export type {
+  ActionCard,
+  ActionCardsResponse,
+  ActionTarget,
+  Diagnosis,
+  DiagnosisCode,
+  EvidenceDatum,
+  FunnelKpi,
+  GlobalFilter,
+  IntentRow,
+  IntentTier,
+  LlmFacts,
+  LlmSummaryResult,
+  MatrixCell,
+  MatrixDTO,
+  MatrixRow,
+  MatrixState,
+  PeriodHalves,
+  PlatformRow,
+  QuestionDetailV3,
+  QuestionDetailV3Response,
+  RuleId,
+  Severity,
+  SourceStructure,
+  SummaryMode,
+  SummaryRequest,
+  SummaryV3DTO,
+  SummaryV3Response as Summary,
+  TargetKind,
+  TopicRow,
+  TrendPoint,
+  VerifiedNumber,
+} from '@geo/backend/dashboard/schema';
+
+// F9 text and the fixed vocabularies — one definition, shared with the backend.
+export { INTENT_LABELS, INTENTS, OWNED_DOMAIN_DISCLAIMER, PLATFORMS } from '@geo/backend/dashboard/schema';

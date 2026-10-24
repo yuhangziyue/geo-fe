@@ -1,4 +1,4 @@
-import type { Summary } from './types';
+import type { SummaryV2 as Summary } from './types';
 
 function KpiCard({ label, value, hint, sub }: { label: string; value: string; hint: string; sub?: string }) {
   return (

@@ -1,6 +1,42 @@
 import { applyFilter, metricRow } from './metrics';
 import { topicScenario } from './repo';
-import { OWNED_DOMAIN, type Insight, type Question, type SummaryFilter } from './schema';
+import {
+  OWNED_DOMAIN,
+  type ActionCard,
+  type GlobalFilter,
+  type Insight,
+  type LlmFacts,
+  type Question,
+  type SummaryFilter,
+  type SummaryV3DTO,
+  type TopicScenarioMap,
+} from './schema';
+
+/**
+ * v3 action center (05 §3) — T0 stub, B2 implements. Rules fire only past their thresholds; cards are sorted by
+ * severity, then by impact. `topicScenarios` may be an EMPTY map (topic-scenario.json deleted): every scenario
+ * target must then fall back to `{ kind: 'generic', label: 'View products', href: '/products' }`, never throw.
+ */
+export function buildActions(questions: Question[], filter: GlobalFilter, topicScenarios: TopicScenarioMap): ActionCard[] {
+  void questions;
+  void filter;
+  void topicScenarios;
+  throw new Error('not implemented in T0');
+}
+
+/**
+ * v3 — T0 stub, B2 implements. The fact sheet handed to the LLM / template summary: built only from the sorted
+ * cards and the summary aggregates, never from raw rows. `summary` gives brand, funnel, period halves and
+ * source totals (LlmFacts.sources.totalCitations comes from `sources.ownedShare.total`).
+ */
+export function factsForLlm(
+  cards: ActionCard[],
+  summary: Pick<SummaryV3DTO, 'brand' | 'funnel' | 'periodHalves' | 'sources'>,
+): LlmFacts {
+  void cards;
+  void summary;
+  throw new Error('not implemented in T0');
+}
 
 export const isOwnedUrl = (url: string) => {
   try {

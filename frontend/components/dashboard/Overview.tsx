@@ -10,7 +10,7 @@ import { InsightPanel } from './InsightPanel';
 import { IntentCards } from './IntentCards';
 import { KpiRow } from './KpiRow';
 import { questionsHref } from './links';
-import type { Summary } from './types';
+import type { SummaryV2 as Summary } from './types';
 import { useApi, withSimulate } from './useApi';
 
 /** Overview page: owns the URL filter and the one summary request; every block below renders from it. */

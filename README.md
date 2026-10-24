@@ -24,7 +24,7 @@ pnpm dev          # 自动 seed SQLite 后启动 http://localhost:3000
 |---|---|
 | `pnpm dev` | 开发模式。先把 `data/` 里的 JSON 导入 SQLite（`.local/geo.db`），再起 Next.js |
 | `pnpm demo` | seed → `next build` → `next start`。**演示「后台改内容 → 静态页与 JSON-LD 同步更新」请用这个**：dev 模式每次请求都现场渲染，看不出按需重新生成是否生效 |
-| `pnpm test` | 后端单测（Vitest，43 条） |
+| `pnpm test` | 后端单测（Vitest，45 条） |
 | `pnpm typecheck` | 前端 `tsc --noEmit` |
 
 **演示开关**：任一 Dashboard 页面加 `?simulate=slow | error | empty`，可当场切出 Loading / Error / Empty 三态（由 `DEMO_SIMULATE=0` 关闭）。
@@ -117,26 +117,35 @@ erDiagram
 - Visibility = 被提及的问题数 ÷ 问题数，即提及率，页面上直接写明；Citations 71 是引用**条数**，另外标出只有 42 个问题有引用（35%）。
 - 取整用「四舍六入五成双」：Claude 15/24 = 62.5，出题方汇总是 62。用 JS `Math.round` 会得到 63，单测对出题方汇总逐项比对时发现。
 - 反方：数据量小，直接读 summary 更省事。但数据源一旦换成真实明细，接口不用改。
+- 何时换：明细到百万行以上时，改为在数据库或 OLAP 里按天、平台、Topic 预聚合，接口契约不变。
 
 **③ AI Insight：规则算数，不让模型编数字**
 - 5 条结论（短板平台、短板 Topic、提及未转推荐、被提及但缺引用、自有来源占比）都由明细算出，每条附一个可点开的证据链接（预置筛选的问题列表）。
-- 反方：看起来没那么「AI」。但数字可复现、无 key 也能完整演示；接入 LLM 时只让模型润色措辞，并回查文中每个数字。
+- 反方：看起来没那么「AI」。但数字可复现、无 key 也能完整演示。
+- 何时换：配置 LLM key 后，规则算出的数字作为上下文交给模型润色和延伸，输出后回查文中每个数字，对不上的标红；规则版保留为无 key 时的兜底。
 
 **④ 产品页：静态生成 + 按需重新生成**
 - 详情页和场景页用 `generateStaticParams` 预生成，后台保存后 `revalidatePath`。爬虫和 AI 抓取拿到的是完整 HTML。
-- 反方：客户端渲染写起来更简单，但爬虫和 AI 读不到 JS 渲染的内容，等于这道题的立论不成立。
+- 反方：客户端渲染写起来更简单，但爬虫和 AI 读不到 JS 渲染的内容，等于这道题的立论不成立；另一个反方是「每次请求服务端渲染」，永远最新，但这类内容几乎不变，每次渲染是浪费。
+- 何时换：产品数上万、一次编辑要重新生成的页面太多时，改为按标签（`revalidateTag`）精确失效，或加时间型 ISR 兜底。现在每次保存重新生成全部产品页（约 20 个），因为每个产品页都展示同系列产品。
 
 **⑤ JSON-LD：一张 `@graph`，内容与页面可见内容同源，不编造**
 - Organization（`@id`）、Product（`brand` 指向 Organization）、FAQPage、BreadcrumbList；场景页是 CollectionPage + ItemList。页面和 JSON-LD 由同一份数据渲染。
 - **不补价格和评分**：数据里没有。Google 的 Product 富摘要需要 offers / review / aggregateRating 之一，所以 Rich Results Test 会对 Product 报缺字段。这里的 Product 标记用来**声明实体**，让 AI 系统理解「哪个品牌的哪款产品、有什么属性」，这正是 GEO 的价值所在。
+- 反方：补一个 Mock 价格就能让 Rich Results Test 全绿。但结构化数据必须和页面可见内容一致，编造价格既违反 Google 的结构化数据政策，也违背「不改原始数据含义」。
+- 何时换：有真实价格或评价数据时补上 `offers` / `aggregateRating`，争取富摘要。
 
 **⑥ Ask AI：只依据知识库作答，资料冲突时明说**
 - 关键词检索，「是否支持某功能」类问题优先查规格（数据里这类 FAQ 是答非所问的模板句）；查不到就明确说没有。
 - 卖点与规格矛盾时两处都引用，提示「Sources disagree」，不替数据拍板。例：Nova 系列卖点写 PoE support，规格里 Nova X8 的连接方式却是 Ethernet。
 - 入口融入产品：详情页默认限定当前产品，可切到全站；列表页是全站问答。
+- 反方：向量检索对同义表达召回更好；把全部知识塞进提示词交给 LLM 也能答。但前者要嵌入模型或外部服务，评审跑不起来的风险上升；后者没有检索依据，引用无从标起。
+- 何时换：知识条目上千、问法发散时上混合检索（关键词 + 向量），并用 LLM 生成、逐句标来源。
 
 **⑦ 场景是实体，未匹配的 Best For 保留为标签**
-- `best_for` 有 15 种取值，场景表只有 8 个。名称完全相同的才链接到场景实体（有自己的页面和 JSON-LD），其余原样保留。没有做近义词合并，因为数据说明要求保留原始含义。
+- `best_for` 有 15 种取值，场景表只有 8 个。名称完全相同的才链接到场景实体（有自己的页面和 JSON-LD），其余原样保留。
+- 反方：把 Small Retail 合并进 Retail、Multi-site Deployment 合并进 Multi-site，场景页会更饱满。但这改变了原始含义，数据说明不允许。
+- 何时换：内容团队确认了场景分类后，在后台维护「标签 → 场景」映射表，由人来决定合并，而不是代码替数据决定。
 
 ---
 

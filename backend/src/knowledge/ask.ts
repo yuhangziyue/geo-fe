@@ -16,6 +16,7 @@ function tokens(s: string): string[] {
   return s.toLowerCase().split(/[^a-z0-9+\-]+/).map((w) => w.replace(/^-+|-+$/g, '')).filter(Boolean);
 }
 const contentTokens = (s: string) => tokens(s).filter((w) => !STOP.has(w));
+const singular = (w: string) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
 
 // Every target token must appear as a token of the haystack ("wi-fi 7" does not match "Wi-Fi + Ethernet").
 function matches(hay: string | null, target: string[]): boolean {
@@ -88,6 +89,22 @@ export function ask(question: string, productSlug?: string): AskResult {
   const { products, named } = scope(q, productSlug);
   if (products.length === 0) return NOT_FOUND('this product', 'that');
   const where = named && products.length === 1 ? products[0].name : 'any product';
+
+  // "best for / suited for <scenario>": answer from Best For labels ("warehouses" matches "Warehouse").
+  const bestFor = q.match(/\b(?:best|suited|suitable|recommended|good)\s+for\s+(.+?)[?.!]*$/i);
+  const wanted = bestFor ? contentTokens(bestFor[1]).map(singular) : [];
+  if (wanted.length) {
+    const hits = products
+      .map((p) => ({ p, label: p.bestFor.find((b) => contentTokens(b.label).map(singular).every((t) => wanted.includes(t)))?.label }))
+      .filter((h): h is { p: ProductDetail; label: string } => Boolean(h.label));
+    if (hits.length === 0) return NOT_FOUND(where, `"${bestFor![1]}"`);
+    return {
+      found: true,
+      conflict: false,
+      answer: `${hits.length} product${hits.length > 1 ? 's' : ''} list "${hits[0].label}" under Best For: ${hits.map((h) => h.p.name).join(', ')}.`,
+      sources: hits.slice(0, 8).map((h) => ({ label: `${h.p.name} · Best For`, href: href(h.p, 'best-for') })),
+    };
+  }
 
   const support = q.match(/\b(?:support|supports|have|has|include|includes|offer|offers|come with)\s+(.+?)[?.!]*$/i);
   if (support) {

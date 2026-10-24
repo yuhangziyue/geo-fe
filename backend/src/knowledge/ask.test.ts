@@ -42,4 +42,17 @@ describe('ask', () => {
     expect(r.found).toBe(true);
     expect(r.answer).toContain('Nova X8');
   });
+
+  it('answers "best for <scenario>" from Best For, plural or singular (list-page example)', () => {
+    for (const q of ['Which products are best for warehouses?', 'Which products are best for warehouse?']) {
+      const r = ask(q);
+      expect(r.found).toBe(true);
+      expect(r.answer).toContain('Nova X4');
+      expect(r.sources.every((s) => s.href.endsWith('#best-for'))).toBe(true);
+    }
+  });
+
+  it('says not found for a Best For value no product lists', () => {
+    expect(ask('Which products are best for hospitals?').found).toBe(false);
+  });
 });

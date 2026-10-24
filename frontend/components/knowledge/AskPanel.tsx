@@ -4,9 +4,10 @@ import { useState } from 'react';
 
 type Answer = { found: boolean; answer: string; conflict: boolean; sources: Array<{ label: string; href: string }> };
 
-export function AskPanel({ productSlug, productName }: { productSlug: string; productName: string }) {
+// Without a product the panel is site-wide (list page); on a product page it defaults to that product.
+export function AskPanel({ productSlug, productName }: { productSlug?: string; productName?: string }) {
   const [question, setQuestion] = useState('');
-  const [scope, setScope] = useState<'product' | 'all'>('product');
+  const [scope, setScope] = useState<'product' | 'all'>(productSlug ? 'product' : 'all');
   const [state, setState] = useState<{ status: 'idle' | 'loading' | 'done' | 'error'; data?: Answer; error?: string }>({ status: 'idle' });
 
   async function submit(e: React.FormEvent) {
@@ -27,12 +28,15 @@ export function AskPanel({ productSlug, productName }: { productSlug: string; pr
     }
   }
 
-  const examples = [`Does ${productName} support PoE?`, `Does ${productName} support line crossing?`, `What scenarios is ${productName} best suited for?`];
+  const examples = productName
+    ? [`Does ${productName} support PoE?`, `Does ${productName} support line crossing?`, `What scenarios is ${productName} best suited for?`]
+    : ['Which products support thermal imaging?', 'Which products are best for warehouses?', 'Does Nova X8 support PoE?'];
 
   return (
     <section id="ask" aria-labelledby="ask-title" className="rounded-lg border border-sky-200 bg-sky-50/50 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="ask-title" className="text-lg font-semibold">Ask AI</h2>
+        {productName && (
         <div role="radiogroup" aria-label="Search scope" className="flex rounded-md border border-slate-300 bg-white p-0.5 text-sm">
           {(['product', 'all'] as const).map((s) => (
             <button
@@ -47,6 +51,7 @@ export function AskPanel({ productSlug, productName }: { productSlug: string; pr
             </button>
           ))}
         </div>
+        )}
       </div>
       <p className="mt-1 text-sm text-slate-600">Answers come only from this knowledge base, with sources. Rule-based retrieval, English only.</p>
       <form onSubmit={submit} className="mt-3 flex gap-2">

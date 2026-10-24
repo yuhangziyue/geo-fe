@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { AskPanel } from '@/components/knowledge/AskPanel';
 import { listProducts, listSeries } from '@geo/backend/knowledge/repo';
 import { StatusBadge, showResolution } from '@/components/knowledge/StatusBadge';
 
@@ -44,6 +45,10 @@ export default async function ProductsPage({ searchParams }: Props) {
           <Link href="/products" className="text-sky-700 hover:underline">Clear filters</Link>
         </p>
       )}
+
+      <div className="mt-6">
+        <AskPanel />
+      </div>
 
       <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((p) => (

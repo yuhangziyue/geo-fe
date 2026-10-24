@@ -1,13 +1,21 @@
 {
   "name": "geo-fe",
   "private": true,
-  "engines": { "node": ">=18.18" },
+  "packageManager": "pnpm@7.18.0",
+  "engines": {
+    "node": ">=18.18"
+  },
   "scripts": {
     "seed": "pnpm --filter @geo/backend db:seed",
     "dev": "pnpm seed && pnpm --filter frontend dev",
     "build": "pnpm seed && pnpm --filter frontend build",
     "demo": "pnpm build && pnpm --filter frontend start",
     "test": "pnpm --filter @geo/backend test",
-    "typecheck": "pnpm --filter frontend exec tsc --noEmit"
+    "typecheck": "pnpm --filter frontend exec tsc --noEmit",
+    "lint": "pnpm --filter frontend lint",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2"
   }
 }

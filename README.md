@@ -26,6 +26,10 @@ pnpm dev          # 自动 seed SQLite 后启动 http://localhost:3000
 | `pnpm demo` | seed → `next build` → `next start`。**演示「后台改内容 → 静态页与 JSON-LD 同步更新」请用这个**：dev 模式每次请求都现场渲染，看不出按需重新生成是否生效 |
 | `pnpm test` | 后端单测（Vitest，57 条） |
 | `pnpm typecheck` | 前端 `tsc --noEmit` |
+| `pnpm lint` | ESLint（`next/core-web-vitals` + `next/typescript`），零警告才通过 |
+| `pnpm e2e` | Playwright 冒烟测试（6 条）。自带生产构建，用独立的端口 3100、构建目录 `.next-e2e` 和数据库 `.local/e2e.db`，不影响正在跑的 `pnpm dev`。首次需 `pnpm exec playwright install chromium` |
+
+CI（`.github/workflows/ci.yml`）依次跑 typecheck → lint → test → build → e2e，失败时上传 Playwright 报告。
 
 **演示开关**：任一 Dashboard 页面加 `?simulate=slow | error | empty`，可当场切出 Loading / Error / Empty 三态（由 `DEMO_SIMULATE=0` 关闭）。
 
@@ -42,7 +46,7 @@ pnpm dev          # 自动 seed SQLite 后启动 http://localhost:3000
 | 可视化 | ECharts 5 | 只在客户端组件里加载，卸载时 dispose |
 | 类型与校验 | zod | 数据文件、接口出入参、后台表单共用一份 schema |
 | 存储 | P1：只读 JSON；P2：SQLite（better-sqlite3）+ Drizzle ORM | |
-| 测试 | Vitest | 断言值取自对数据的人工核算 |
+| 测试 | Vitest · Playwright | 单测断言值取自对数据的人工核算；端到端覆盖三态、URL 筛选、后台保存后静态页与 JSON-LD 同步、保存失败、图表数据表、空场景不收录 |
 
 ---
 
@@ -195,11 +199,11 @@ erDiagram
 - 出题方数据是模板生成的：同系列 4 款产品卖点完全相同，卖点与规格有矛盾。页面原样展示，对 SEO 是近似重复内容。
 - 后台没有登录，也不能编辑 FAQ；slug 改名不会生成 301 重定向。
 - 趋势图没有日期范围选择（接口已支持 `from` / `to`）。
-- 没有端到端 UI 测试，界面靠无头浏览器走查和录屏验证。
+- 端到端只有 6 条冒烟用例，覆盖主路径，没有视觉回归和移动端。
 
 **再给一周的优先级**
 1. **接入 LLM，保留数字校验**：Insight 用规则算出的数字作为上下文让模型润色，输出后回查每个数字，对不上的标红；Ask AI 改为检索 + 生成，回答逐句标来源，检索得分过低时拒答。
 2. **内容质量**：为每个产品补独有内容，解决卖点与规格矛盾，并在后台加「卖点与规格一致性」校验。这对 SEO 去重和 GEO 实体区分都是根本问题。
 3. **后台补齐**：登录、FAQ 编辑、slug 改名自动 301、编辑历史。
 4. **Dashboard 交互**：日期范围、平台对比切换、问题详情抽屉（拦截路由）。
-5. **工程**：Playwright 端到端测试覆盖三态与筛选；CI 跑 test / typecheck / build。
+5. **工程**：看板首屏改为服务端组件取数（筛选已全在 URL，迁移只是换取数位置）；端到端补移动端视口与视觉回归。

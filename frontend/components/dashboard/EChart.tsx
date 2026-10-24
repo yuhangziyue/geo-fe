@@ -1,17 +1,26 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { ECharts, EChartsOption } from 'echarts';
+
+/** The chart's numbers as a table: a canvas is opaque to screen readers and cannot be copied from. */
+export interface ChartTable {
+  caption: string;
+  columns: string[];
+  rows: Array<Array<string | number>>;
+}
 
 interface Props {
   option: EChartsOption;
   height?: number;
   onClick?: (params: { name: string; seriesName?: string; dataIndex: number }) => void;
   ariaLabel: string;
+  table?: ChartTable;
 }
 
 /** ECharts wrapper: loads echarts on the client only, follows its container's size, disposes on unmount. */
-export function EChart({ option, height = 300, onClick, ariaLabel }: Props) {
+export function EChart({ option, height = 300, onClick, ariaLabel, table }: Props) {
+  const tableId = useId();
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<ECharts | null>(null);
   const clickRef = useRef(onClick);
@@ -45,5 +54,39 @@ export function EChart({ option, height = 300, onClick, ariaLabel }: Props) {
     chart.current?.setOption(option, true);
   }, [option]);
 
-  return <div ref={el} role="img" aria-label={ariaLabel} style={{ height, width: '100%' }} />;
+  return (
+    <>
+      <div ref={el} role="img" aria-label={ariaLabel} aria-describedby={table ? tableId : undefined} style={{ height, width: '100%' }} />
+      {table && (
+        <details className="mt-2 text-sm">
+          <summary className="cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-800">Show data table</summary>
+          <div className="mt-2 overflow-x-auto">
+            <table id={tableId} className="w-full text-left text-xs">
+              <caption className="sr-only">{table.caption}</caption>
+              <thead className="border-b border-slate-200 text-slate-500">
+                <tr>
+                  {table.columns.map((c, i) => (
+                    <th key={c} scope="col" className={`py-1.5 pr-3 font-medium ${i > 0 ? 'text-right' : ''}`}>{c}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 tabular-nums">
+                {table.rows.map((r) => (
+                  <tr key={String(r[0])}>
+                    {r.map((cell, i) =>
+                      i === 0 ? (
+                        <th key={i} scope="row" className="py-1.5 pr-3 font-normal text-slate-700">{cell}</th>
+                      ) : (
+                        <td key={i} className="py-1.5 pr-3 text-right text-slate-600">{cell}</td>
+                      ),
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+    </>
+  );
 }

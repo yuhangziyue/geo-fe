@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { AsyncState } from './AsyncState';
 import { StatusBadge } from './StatusBadge';
 import type { QuestionPage } from './types';
-import { useApi, withSimulate } from './useApi';
+import { useApi } from './useApi';
 
 const FILTER_KEYS = ['platform', 'mentioned', 'recommended', 'topic', 'intent', 'q'] as const;
 const selectCls = 'rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm';

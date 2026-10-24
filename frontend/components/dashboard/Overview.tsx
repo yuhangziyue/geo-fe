@@ -3,40 +3,17 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
-import type { EChartsOption } from 'echarts';
 import { AsyncState, Card } from './AsyncState';
+import { platformChart, topicChart, trendChart } from './charts';
 import { EChart } from './EChart';
 import { InsightPanel } from './InsightPanel';
+import { IntentCards } from './IntentCards';
+import { KpiRow } from './KpiRow';
+import { questionsHref } from './links';
 import type { Summary } from './types';
 import { useApi, withSimulate } from './useApi';
 
-const WEAK_TOPIC_COLOR = '#e11d48';
-const BASE_COLOR = '#6366f1';
-
-function KpiCard({ label, value, hint, sub }: { label: string; value: string; hint: string; sub?: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" title={hint}>
-      <p className="flex items-center gap-1 text-sm font-medium text-slate-500">
-        {label}
-        <span aria-label={hint} className="cursor-help text-slate-400">ⓘ</span>
-      </p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{sub ?? hint}</p>
-    </div>
-  );
-}
-
-/** Link into the question list that keeps the overview's context (platform, simulate) and adds the clicked dimension. */
-function questionsHref(search: Pick<URLSearchParams, 'get'>, extra: Record<string, string>): string {
-  const next = new URLSearchParams();
-  for (const k of ['platform', 'simulate']) {
-    const v = search.get(k);
-    if (v) next.set(k, v);
-  }
-  for (const [k, v] of Object.entries(extra)) next.set(k, v);
-  return `/dashboard/questions?${next.toString()}`;
-}
-
+/** Overview page: owns the URL filter and the one summary request; every block below renders from it. */
 export function Overview() {
   const router = useRouter();
   const pathname = usePathname();
@@ -55,80 +32,13 @@ export function Overview() {
     router.push(next.size ? `${pathname}?${next}` : pathname);
   };
 
-  const platformOption = useMemo<EChartsOption | null>(() => {
-    if (!data) return null;
-    return {
-      tooltip: { trigger: 'axis' },
-      legend: { bottom: 0 },
-      grid: { left: 40, right: 48, top: 40, bottom: 48 },
-      xAxis: { type: 'category', data: data.platforms.map((p) => p.name) },
-      yAxis: [
-        { type: 'value', name: 'Count' },
-        { type: 'value', name: 'Visibility %', max: 100, axisLabel: { formatter: '{value}%' } },
-      ],
-      series: [
-        { name: 'Mentions', type: 'bar', data: data.platforms.map((p) => p.mentions), itemStyle: { color: '#a5b4fc' } },
-        { name: 'Recommendations', type: 'bar', data: data.platforms.map((p) => p.recommendations), itemStyle: { color: BASE_COLOR } },
-        { name: 'Citations', type: 'bar', data: data.platforms.map((p) => p.citations), itemStyle: { color: '#94a3b8' } },
-        {
-          name: 'Visibility %',
-          type: 'line',
-          yAxisIndex: 1,
-          data: data.platforms.map((p) => p.visibility),
-          itemStyle: { color: '#f59e0b' },
-          label: { show: true, formatter: '{c}%' },
-        },
-      ],
-    };
-  }, [data]);
-
-  const trendOption = useMemo<EChartsOption | null>(() => {
-    if (!data) return null;
-    return {
-      tooltip: { trigger: 'axis' },
-      legend: { bottom: 0 },
-      grid: { left: 40, right: 48, top: 40, bottom: 48 },
-      xAxis: { type: 'category', data: data.trend.map((t) => t.date.slice(5)) },
-      yAxis: [
-        { type: 'value', name: 'Count', minInterval: 1 },
-        { type: 'value', name: 'Visibility %', max: 100, axisLabel: { formatter: '{value}%' } },
-      ],
-      series: [
-        { name: 'Mentions', type: 'line', data: data.trend.map((t) => t.mentions), itemStyle: { color: '#a5b4fc' } },
-        { name: 'Recommendations', type: 'line', data: data.trend.map((t) => t.recommendations), itemStyle: { color: BASE_COLOR } },
-        { name: 'Visibility %', type: 'line', yAxisIndex: 1, smooth: true, data: data.trend.map((t) => t.visibility), itemStyle: { color: '#f59e0b' } },
-      ],
-    };
-  }, [data]);
-
-  const topicOption = useMemo<EChartsOption | null>(() => {
-    if (!data) return null;
-    const topics = [...data.topics].sort((a, b) => a.visibility - b.visibility);
-    const min = Math.min(...topics.map((t) => t.visibility));
-    return {
-      tooltip: {
-        trigger: 'axis',
-        formatter: (p: unknown) => {
-          const t = topics[(p as Array<{ dataIndex: number }>)[0].dataIndex];
-          return `${t.topic}<br/>Visibility ${t.visibility}%<br/>${t.recommendations} recommendations / ${t.questions} questions`;
-        },
-      },
-      grid: { left: 150, right: 40, top: 8, bottom: 24 },
-      xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
-      yAxis: { type: 'category', data: topics.map((t) => t.topic) },
-      series: [
-        {
-          type: 'bar',
-          data: topics.map((t) => ({ value: t.visibility, itemStyle: { color: t.visibility === min ? WEAK_TOPIC_COLOR : BASE_COLOR } })),
-          label: { show: true, position: 'right', formatter: '{c}%' },
-        },
-      ],
-    };
-  }, [data]);
-
-  const k = data?.kpi;
-  const citedPct = k && k.questions ? Math.round((k.citedQuestions / k.questions) * 100) : 0;
+  const charts = useMemo(
+    () => (data ? { platform: platformChart(data), trend: trendChart(data), topic: topicChart(data) } : null),
+    [data],
+  );
   const weakestTopic = data?.topics.length ? data.topics.reduce((a, b) => (b.visibility < a.visibility ? b : a)) : null;
+  // Shared by every block: they all render from the same request.
+  const async = { status: summary.status, error: summary.error, onRetry: summary.retry, refreshing: summary.refreshing };
 
   return (
     <div className="space-y-6">
@@ -155,53 +65,37 @@ export function Overview() {
       </div>
 
       <AsyncState
-        status={summary.status}
-        error={summary.error}
-        onRetry={summary.retry}
-        refreshing={summary.refreshing}
-        isEmpty={!!k && k.questions === 0}
+        {...async}
+        isEmpty={!!data && data.kpi.questions === 0}
         skeletonHeight={110}
         empty={<p>No questions were analyzed for this selection.</p>}
       >
-        {() => (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <KpiCard label="Visibility" value={`${k!.visibility}%`} hint="Visibility = mention rate (questions mentioning the brand ÷ questions analyzed)" sub={`${k!.mentions} of ${k!.questions} questions mention the brand`} />
-            <KpiCard label="Mentions" value={String(k!.mentions)} hint="Questions whose answer mentions the brand" />
-            <KpiCard label="Recommendations" value={String(k!.recommendations)} hint="Questions whose answer recommends the brand" sub={`${k!.mentions - k!.recommendations} mentions without a recommendation`} />
-            <KpiCard label="Citations" value={String(k!.citations)} hint="Total cited sources across all answers" sub={`${k!.citations} citations · ${k!.citedQuestions} questions (${citedPct}%)`} />
-            <KpiCard
-              label="Prompt coverage"
-              value={`${data!.prompts.mentionedEverywhere}/${data!.prompts.total}`}
-              hint="Prompts whose every run (each platform, each day asked) mentions the brand. Rows are runs; content is written per prompt."
-              sub={`prompts mentioned on every run · ${data!.prompts.mentionedNowhere} never mentioned`}
-            />
-          </div>
-        )}
+        {() => <KpiRow data={data!} />}
       </AsyncState>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="By platform" subtitle="Click a platform to see its questions">
-          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} refreshing={summary.refreshing} isEmpty={!!data && data.platforms.length === 0}>
+          <AsyncState {...async} isEmpty={!!data && data.platforms.length === 0}>
             {() => (
               <EChart
                 ariaLabel="Mentions, recommendations, citations and visibility by platform"
-                option={platformOption!}
+                {...charts!.platform}
                 onClick={({ name }) => router.push(questionsHref(search, { platform: name }))}
               />
             )}
           </AsyncState>
         </Card>
         <Card title="Daily trend" subtitle="Mentions, recommendations and visibility per day">
-          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} refreshing={summary.refreshing} isEmpty={!!data && data.trend.length === 0}>
-            {() => <EChart ariaLabel="Daily visibility trend" option={trendOption!} />}
+          <AsyncState {...async} isEmpty={!!data && data.trend.length === 0}>
+            {() => <EChart ariaLabel="Daily visibility trend" {...charts!.trend} />}
           </AsyncState>
         </Card>
         <Card title="Visibility by topic" subtitle="Weakest topic highlighted · click a bar to drill down">
-          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} refreshing={summary.refreshing} isEmpty={!!data && data.topics.length === 0}>
+          <AsyncState {...async} isEmpty={!!data && data.topics.length === 0}>
             {() => (
               <EChart
                 ariaLabel="Visibility by topic"
-                option={topicOption!}
+                {...charts!.topic}
                 onClick={({ name }) => router.push(questionsHref(search, { topic: name }))}
               />
             )}
@@ -223,10 +117,7 @@ export function Overview() {
         </Card>
         <Card title="Prompts to fix first" subtitle="One entry per prompt · never mentioned first, then mentioned but not recommended">
           <AsyncState
-            status={summary.status}
-            error={summary.error}
-            onRetry={summary.retry}
-            refreshing={summary.refreshing}
+            {...async}
             isEmpty={!!data && data.worstQuestions.length === 0}
             empty={<p>Every question in this selection recommends the brand.</p>}
           >
@@ -250,27 +141,8 @@ export function Overview() {
       </div>
 
       <Card title="By intent type" subtitle="Intent labels come from the dataset, which does not define them · click to drill down">
-        <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} refreshing={summary.refreshing} isEmpty={!!data && data.intents.length === 0}>
-          {() => (
-            <>
-              <ul className="grid gap-3 sm:grid-cols-3">
-                {data!.intents.map((i) => (
-                  <li key={i.intent}>
-                    <Link href={questionsHref(search, { intent: i.intent })} className="block rounded-lg border border-slate-200 p-4 hover:border-indigo-300 hover:bg-slate-50">
-                      <p className="text-sm font-medium text-slate-500">Intent {i.intent}</p>
-                      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{i.visibility}%</p>
-                      <p className="mt-1 text-xs text-slate-500">{i.questions} questions · {i.recommendations} recommendations</p>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              {data!.missingIntents.length > 0 && (
-                <p className="mt-3 text-xs text-slate-500">
-                  The data notes also list intent {data!.missingIntents.join(', ')}; no question in this selection has it.
-                </p>
-              )}
-            </>
-          )}
+        <AsyncState {...async} isEmpty={!!data && data.intents.length === 0}>
+          {() => <IntentCards data={data!} hrefFor={(intent) => questionsHref(search, { intent })} />}
         </AsyncState>
       </Card>
 

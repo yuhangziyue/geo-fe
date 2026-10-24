@@ -22,6 +22,8 @@ export default function DashboardRootLayout({ children }: { children: React.Reac
             <nav className="flex gap-5 text-sm text-slate-600">
               <Link href="/dashboard" className="hover:text-slate-900">Overview</Link>
               <Link href="/dashboard/questions" className="hover:text-slate-900">Questions</Link>
+              {/* Another root layout: navigation is a full page load either way, so a plain link says so honestly. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a href="/products" className="hover:text-slate-900">Knowledge Center ↗</a>
             </nav>
           </div>

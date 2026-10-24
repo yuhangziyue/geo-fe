@@ -43,16 +43,25 @@ export function ProductForm({
     }
     setStatus('saving');
     setErrors({});
-    const res = await fetch(mode === 'create' ? '/api/knowledge/products' : `/api/knowledge/products/${initial.slug}`, {
-      method: mode === 'create' ? 'POST' : 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(parsed.data),
-    });
-    const body = await res.json();
-    if (!res.ok) {
-      setErrors(body.errors ?? {});
+    let res: Response;
+    let body: { slug?: string; errors?: FieldErrors; detail?: string; title?: string } | null;
+    try {
+      res = await fetch(mode === 'create' ? '/api/knowledge/products' : `/api/knowledge/products/${initial.slug}`, {
+        method: mode === 'create' ? 'POST' : 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(parsed.data),
+      });
+      // A proxy or crash page may answer with HTML; never let parsing leave the form stuck on "Saving...".
+      body = await res.json().catch(() => null);
+    } catch {
       setStatus('error');
-      setMessage(body.detail ?? body.title ?? 'Save failed');
+      setMessage('Network error: the change was not saved. Check your connection and try again.');
+      return;
+    }
+    if (!res.ok || !body?.slug) {
+      setErrors(body?.errors ?? {});
+      setStatus('error');
+      setMessage(body?.detail ?? body?.title ?? `Save failed (${res.status})`);
       return;
     }
     setStatus('saved');

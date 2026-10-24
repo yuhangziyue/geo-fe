@@ -40,7 +40,7 @@ export function Overview() {
     return {
       tooltip: { trigger: 'axis' },
       legend: { bottom: 0 },
-      grid: { left: 40, right: 48, top: 24, bottom: 48 },
+      grid: { left: 40, right: 48, top: 40, bottom: 48 },
       xAxis: { type: 'category', data: data.platforms.map((p) => p.name) },
       yAxis: [
         { type: 'value', name: 'Count' },
@@ -67,7 +67,7 @@ export function Overview() {
     return {
       tooltip: { trigger: 'axis' },
       legend: { bottom: 0 },
-      grid: { left: 40, right: 48, top: 24, bottom: 48 },
+      grid: { left: 40, right: 48, top: 40, bottom: 48 },
       xAxis: { type: 'category', data: data.trend.map((t) => t.date.slice(5)) },
       yAxis: [
         { type: 'value', name: 'Count', minInterval: 1 },

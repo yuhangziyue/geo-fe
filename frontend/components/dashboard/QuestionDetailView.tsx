@@ -64,7 +64,7 @@ export function QuestionDetailView({ id }: { id: string }) {
                     </blockquote>
                   </Card>
 
-                  <Card title="Citations" subtitle={`${q.citations.length} sources · ${analysis.ownedCitations} on the brand's own domain`}>
+                  <Card title="Citations" subtitle={`${q.citations.length} ${q.citations.length === 1 ? 'source' : 'sources'} · ${analysis.ownedCitations} on the brand's own domain`}>
                     {q.citations.length === 0 ? (
                       <p className="text-sm text-slate-500">This answer cites no sources.</p>
                     ) : (

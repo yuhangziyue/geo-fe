@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { useTempDb } from './test-db';
-import { getBrand, getProduct } from './repo';
-import { buildJsonLd } from './jsonld';
+import { getBrand, getProduct, getScenario } from './repo';
+import { buildJsonLd, buildScenarioJsonLd } from './jsonld';
 
 type Node = Record<string, any>;
 
@@ -31,5 +31,23 @@ describe('buildJsonLd', () => {
       .filter((p: Node) => p.name === 'Key feature')
       .map((p: Node) => p.value);
     expect(keyFeatures).toEqual(product.features);
+  });
+});
+
+describe('buildScenarioJsonLd', () => {
+  beforeAll(() => {
+    useTempDb('jsonld-scenario');
+  });
+
+  it('emits a CollectionPage whose ItemList links each product page, publisher = the Organization', () => {
+    const scenario = getScenario('warehouse')!;
+    const ld = buildScenarioJsonLd(getBrand(), scenario, 'https://site.test') as { '@graph': Node[] };
+    const page = ld['@graph'].find((n) => n['@type'] === 'CollectionPage')!;
+    expect(page.url).toBe('https://site.test/scenarios/warehouse');
+    expect(page.publisher['@id']).toBe('https://site.test/#org');
+    expect(page.mainEntity['@type']).toBe('ItemList');
+    expect(page.mainEntity.itemListElement.map((i: Node) => i.url)).toEqual(
+      scenario.products.map((p) => `https://site.test/products/${p.slug}`),
+    );
   });
 });

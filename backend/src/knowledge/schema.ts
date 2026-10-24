@@ -52,3 +52,6 @@ export type ProductDetail = ProductSummary & {
 
 export type Brand = { name: string; slug: string; description: string; website: string; founded: string; headquarters: string; coreCapabilities: string[] };
 export type SeriesInfo = { slug: string; name: string; description: string; productCount: number };
+
+export type ScenarioInfo = { slug: string; name: string; description: string };
+export type ScenarioDetail = ScenarioInfo & { products: ProductSummary[] };

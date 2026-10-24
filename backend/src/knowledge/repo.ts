@@ -1,7 +1,7 @@
 import { asc, eq, sql } from 'drizzle-orm';
 import { getDb } from '../db/client';
 import * as t from '../db/schema';
-import type { Brand, ProductDetail, ProductInput, ProductSummary, SeriesInfo, Specs } from './schema';
+import type { Brand, ProductDetail, ProductInput, ProductSummary, ScenarioDetail, ScenarioInfo, SeriesInfo, Specs } from './schema';
 
 export class RepoError extends Error {
   constructor(public field: string, message: string) { super(message); }
@@ -52,6 +52,17 @@ export function listSeries(): SeriesInfo[] {
     .select({ slug: t.series.slug, name: t.series.name, description: t.series.description, productCount: sql<number>`count(${t.product.id})` })
     .from(t.series).leftJoin(t.product, eq(t.product.seriesId, t.series.id))
     .groupBy(t.series.id).orderBy(asc(t.series.id)).all();
+}
+
+export function listScenarios(): ScenarioInfo[] {
+  return getDb().select({ slug: t.scenario.slug, name: t.scenario.name, description: t.scenario.description })
+    .from(t.scenario).orderBy(asc(t.scenario.id)).all();
+}
+
+// Products are linked only where best_for names the scenario exactly (unmatched labels stay plain tags).
+export function getScenario(slug: string): ScenarioDetail | null {
+  const s = listScenarios().find((x) => x.slug === slug);
+  return s ? { ...s, products: listProducts({ scenario: slug }) } : null;
 }
 
 export function getBrand(): Brand {

@@ -104,7 +104,7 @@ export default async function ProductPage({ params }: Props) {
               {p.bestFor.map((b) => (
                 <li key={b.label}>
                   {b.scenarioSlug ? (
-                    <Link href={`/products?scenario=${b.scenarioSlug}`} title="Matches a defined scenario" className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-800 ring-1 ring-emerald-200">
+                    <Link href={`/scenarios/${b.scenarioSlug}`} title="Matches a defined scenario" className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-800 ring-1 ring-emerald-200">
                       {b.label} <span className="text-[10px] uppercase tracking-wide">Scenario</span>
                     </Link>
                   ) : (

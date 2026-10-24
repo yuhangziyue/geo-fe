@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { useTempDb } from './test-db';
-import { getProduct, listProducts, listSeries, countAll, getBrand } from './repo';
+import { getProduct, getScenario, listProducts, listScenarios, listSeries, countAll, getBrand } from './repo';
 
 describe('knowledge repo', () => {
   beforeAll(() => {
@@ -21,6 +21,19 @@ describe('knowledge repo', () => {
     const [first] = listProducts({ series: 'nova' });
     expect(first.features).toHaveLength(4);
     expect(first.features).toEqual(getProduct(first.slug)!.features);
+  });
+
+  it('returns a scenario with the products whose best_for names it exactly', () => {
+    const warehouse = getScenario('warehouse')!;
+    expect(warehouse.name).toBe('Warehouse');
+    expect(warehouse.products.length).toBeGreaterThan(0);
+    for (const p of warehouse.products) {
+      expect(getProduct(p.slug)!.bestFor.map((b) => b.label)).toContain('Warehouse');
+    }
+    // No product's best_for is literally "Multi-site" (Edge says "Multi-site Deployment"), see 03 §3.3.
+    expect(getScenario('multi-site')!.products).toEqual([]);
+    expect(getScenario('nope')).toBeNull();
+    expect(listScenarios()).toHaveLength(8);
   });
 
   it('links best_for labels to scenarios only on exact name match', () => {

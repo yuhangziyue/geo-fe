@@ -1,4 +1,4 @@
-import type { Brand, ProductDetail } from './schema';
+import type { Brand, ProductDetail, ScenarioDetail } from './schema';
 
 // Pure function: page and JSON-LD render from the same ProductDetail so markup matches visible content.
 // No `offers` / ratings: the dataset has no prices and we do not invent them.
@@ -17,16 +17,7 @@ export function buildJsonLd(brand: Brand, product: ProductDetail, siteUrl: strin
   return {
     '@context': 'https://schema.org',
     '@graph': [
-      {
-        '@type': 'Organization',
-        '@id': orgId,
-        name: brand.name,
-        url: brand.website,
-        description: brand.description,
-        foundingDate: brand.founded,
-        address: brand.headquarters,
-        knowsAbout: brand.coreCapabilities,
-      },
+      organizationNode(brand, orgId),
       {
         '@type': 'Product',
         '@id': `${url}#product`,
@@ -56,6 +47,46 @@ export function buildJsonLd(brand: Brand, product: ProductDetail, siteUrl: strin
           { '@type': 'ListItem', position: 2, name: product.series.name, item: `${base}/products?series=${product.series.slug}` },
           { '@type': 'ListItem', position: 3, name: product.name, item: url },
         ],
+      },
+    ],
+  };
+}
+
+function organizationNode(brand: Brand, orgId: string): object {
+  return {
+    '@type': 'Organization',
+    '@id': orgId,
+    name: brand.name,
+    url: brand.website,
+    description: brand.description,
+    foundingDate: brand.founded,
+    address: brand.headquarters,
+    knowsAbout: brand.coreCapabilities,
+  };
+}
+
+// Scenario page = the scenario entity as a collection of the products that name it in best_for.
+export function buildScenarioJsonLd(brand: Brand, scenario: ScenarioDetail, siteUrl: string): object {
+  const base = siteUrl.replace(/\/$/, '');
+  const url = `${base}/scenarios/${scenario.slug}`;
+  const orgId = `${base}/#org`;
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      organizationNode(brand, orgId),
+      {
+        '@type': 'CollectionPage',
+        '@id': `${url}#page`,
+        url,
+        name: `${scenario.name} security products`,
+        description: scenario.description,
+        publisher: { '@id': orgId },
+        mainEntity: {
+          '@type': 'ItemList',
+          itemListElement: scenario.products.map((p, i) => ({
+            '@type': 'ListItem', position: i + 1, name: p.name, url: `${base}/products/${p.slug}`,
+          })),
+        },
       },
     ],
   };

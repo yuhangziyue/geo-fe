@@ -1,0 +1,13 @@
+{
+  "name": "geo-fe",
+  "private": true,
+  "engines": { "node": ">=18.18" },
+  "scripts": {
+    "seed": "pnpm --filter @geo/backend db:seed",
+    "dev": "pnpm seed && pnpm --filter frontend dev",
+    "build": "pnpm seed && pnpm --filter frontend build",
+    "demo": "pnpm build && pnpm --filter frontend start",
+    "test": "pnpm --filter @geo/backend test",
+    "typecheck": "pnpm --filter frontend exec tsc --noEmit"
+  }
+}

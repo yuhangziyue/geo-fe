@@ -36,7 +36,7 @@ export function fieldErrors(err: z.ZodError): FieldErrors {
 export type Specs = { resolution: string | null; connectivity: string; environment: string; aiFeatures: string[] };
 
 export type ProductSummary = {
-  slug: string; name: string; status: 'active' | 'beta'; shortDescription: string;
+  slug: string; name: string; status: 'active' | 'beta'; shortDescription: string; features: string[];
   series: { slug: string; name: string };
   specs: Omit<Specs, 'aiFeatures'>;
 };
@@ -44,7 +44,6 @@ export type ProductSummary = {
 export type ProductDetail = ProductSummary & {
   id: number;
   overview: string;
-  features: string[];
   bestFor: Array<{ label: string; scenarioSlug: string | null }>;
   faqs: Array<{ id: number; position: number; question: string; answer: string }>;
   specs: Specs;

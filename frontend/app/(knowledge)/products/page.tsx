@@ -55,6 +55,11 @@ export default async function ProductsPage({ searchParams }: Props) {
               </div>
               <h2 className="mt-2 text-lg font-semibold">{p.name}</h2>
               <p className="mt-1 text-sm text-slate-600">{p.shortDescription}</p>
+              <ul aria-label="Key features" className="mt-3 flex flex-wrap gap-1.5">
+                {p.features.map((f) => (
+                  <li key={f} className="rounded bg-sky-50 px-2 py-0.5 text-xs text-sky-800 ring-1 ring-inset ring-sky-200">{f}</li>
+                ))}
+              </ul>
               <dl className="mt-4 grid grid-cols-3 gap-2 text-xs">
                 <Spec label="Resolution" value={showResolution(p.specs.resolution)} />
                 <Spec label="Connectivity" value={p.specs.connectivity} />

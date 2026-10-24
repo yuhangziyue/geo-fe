@@ -21,6 +21,7 @@ function summaryRows(seriesSlug?: string) {
 function toSummary(p: ProductRow, s: { slug: string; name: string }): ProductSummary {
   return {
     slug: p.slug, name: p.name, status: p.status, shortDescription: p.shortDescription, series: s,
+    features: texts(t.productFeature, p.id),
     specs: { resolution: p.resolution, connectivity: p.connectivity, environment: p.environment },
   };
 }

@@ -17,6 +17,12 @@ describe('knowledge repo', () => {
     expect(listSeries()).toHaveLength(5);
   });
 
+  it('includes key features in list items (exam: list shows Key Features)', () => {
+    const [first] = listProducts({ series: 'nova' });
+    expect(first.features).toHaveLength(4);
+    expect(first.features).toEqual(getProduct(first.slug)!.features);
+  });
+
   it('links best_for labels to scenarios only on exact name match', () => {
     const p = getProduct('nova-x4')!;
     expect(p.bestFor.find((b) => b.label === 'Warehouse')?.scenarioSlug).toBe('warehouse');

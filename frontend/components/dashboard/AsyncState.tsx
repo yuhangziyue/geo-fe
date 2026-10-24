@@ -6,6 +6,8 @@ interface Props {
   status: 'loading' | 'error' | 'ok';
   error?: string | null;
   isEmpty?: boolean;
+  /** Newer data is loading: keep showing the current content, dimmed. */
+  refreshing?: boolean;
   onRetry?: () => void;
   empty?: ReactNode;
   skeletonHeight?: number;
@@ -13,7 +15,7 @@ interface Props {
 }
 
 /** One wrapper for the three async states every data block must handle. */
-export function AsyncState({ status, error, isEmpty, onRetry, empty, skeletonHeight = 160, children }: Props) {
+export function AsyncState({ status, error, isEmpty, refreshing, onRetry, empty, skeletonHeight = 160, children }: Props) {
   if (status === 'loading') {
     return (
       <div role="status" aria-label="Loading" className="animate-pulse space-y-3" style={{ minHeight: skeletonHeight }}>
@@ -40,14 +42,18 @@ export function AsyncState({ status, error, isEmpty, onRetry, empty, skeletonHei
       </div>
     );
   }
-  if (isEmpty) {
-    return (
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-        {empty ?? <p>No data for this selection.</p>}
-      </div>
-    );
-  }
-  return <>{children()}</>;
+  const body = isEmpty ? (
+    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+      {empty ?? <p>No data for this selection.</p>}
+    </div>
+  ) : (
+    children()
+  );
+  return (
+    <div aria-busy={refreshing || undefined} className={refreshing ? 'pointer-events-none opacity-50 transition-opacity' : 'transition-opacity'}>
+      {body}
+    </div>
+  );
 }
 
 export function Card({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode }) {

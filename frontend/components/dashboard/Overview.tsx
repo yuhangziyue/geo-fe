@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 import { AsyncState, Card } from './AsyncState';
 import { EChart } from './EChart';
 import { InsightPanel } from './InsightPanel';
-import { PLATFORMS, type Summary } from './types';
+import type { Summary } from './types';
 import { useApi, withSimulate } from './useApi';
 
 const WEAK_TOPIC_COLOR = '#e11d48';
@@ -26,14 +26,34 @@ function KpiCard({ label, value, hint, sub }: { label: string; value: string; hi
   );
 }
 
+/** Link into the question list that keeps the overview's context (platform, simulate) and adds the clicked dimension. */
+function questionsHref(search: Pick<URLSearchParams, 'get'>, extra: Record<string, string>): string {
+  const next = new URLSearchParams();
+  for (const k of ['platform', 'simulate']) {
+    const v = search.get(k);
+    if (v) next.set(k, v);
+  }
+  for (const [k, v] of Object.entries(extra)) next.set(k, v);
+  return `/dashboard/questions?${next.toString()}`;
+}
+
 export function Overview() {
   const router = useRouter();
+  const pathname = usePathname();
   const search = useSearchParams();
   const simulate = search.get('simulate');
-  const [platform, setPlatform] = useState('');
-  const url = withSimulate(`/api/dashboard/summary${platform ? `?platform=${platform}` : ''}`, simulate);
+  // Lives in the URL like every other dashboard filter: survives refresh, shareable, back/forward works.
+  const platform = search.get('platform') ?? '';
+  const url = withSimulate(`/api/dashboard/summary${platform ? `?platform=${encodeURIComponent(platform)}` : ''}`, simulate);
   const summary = useApi<Summary>(url);
   const data = summary.data;
+
+  const setPlatform = (value: string) => {
+    const next = new URLSearchParams(search.toString());
+    if (value) next.set('platform', value);
+    else next.delete('platform');
+    router.push(next.size ? `${pathname}?${next}` : pathname);
+  };
 
   const platformOption = useMemo<EChartsOption | null>(() => {
     if (!data) return null;
@@ -126,7 +146,7 @@ export function Overview() {
             className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
           >
             <option value="">All platforms</option>
-            {PLATFORMS.map((p) => (
+            {(data?.facets.platforms ?? (platform ? [platform] : [])).map((p) => (
               <option key={p}>{p}</option>
             ))}
           </select>
@@ -137,6 +157,7 @@ export function Overview() {
         status={summary.status}
         error={summary.error}
         onRetry={summary.retry}
+        refreshing={summary.refreshing}
         isEmpty={!!k && k.questions === 0}
         skeletonHeight={110}
         empty={<p>No questions were analyzed for this selection.</p>}
@@ -153,28 +174,28 @@ export function Overview() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="By platform" subtitle="Click a platform to see its questions">
-          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} isEmpty={!!data && data.platforms.length === 0}>
+          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} refreshing={summary.refreshing} isEmpty={!!data && data.platforms.length === 0}>
             {() => (
               <EChart
                 ariaLabel="Mentions, recommendations, citations and visibility by platform"
                 option={platformOption!}
-                onClick={({ name }) => router.push(`/dashboard/questions?platform=${encodeURIComponent(name)}`)}
+                onClick={({ name }) => router.push(questionsHref(search, { platform: name }))}
               />
             )}
           </AsyncState>
         </Card>
         <Card title="Daily trend" subtitle="Mentions, recommendations and visibility per day">
-          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} isEmpty={!!data && data.trend.length === 0}>
+          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} refreshing={summary.refreshing} isEmpty={!!data && data.trend.length === 0}>
             {() => <EChart ariaLabel="Daily visibility trend" option={trendOption!} />}
           </AsyncState>
         </Card>
         <Card title="Visibility by topic" subtitle="Weakest topic highlighted · click a bar to drill down">
-          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} isEmpty={!!data && data.topics.length === 0}>
+          <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} refreshing={summary.refreshing} isEmpty={!!data && data.topics.length === 0}>
             {() => (
               <EChart
                 ariaLabel="Visibility by topic"
                 option={topicOption!}
-                onClick={({ name }) => router.push(`/dashboard/questions?topic=${encodeURIComponent(name)}`)}
+                onClick={({ name }) => router.push(questionsHref(search, { topic: name }))}
               />
             )}
           </AsyncState>
@@ -184,6 +205,7 @@ export function Overview() {
             status={summary.status}
             error={summary.error}
             onRetry={summary.retry}
+            refreshing={summary.refreshing}
             isEmpty={!!data && data.worstQuestions.length === 0}
             empty={<p>Every question in this selection recommends the brand.</p>}
           >
@@ -205,7 +227,8 @@ export function Overview() {
         </Card>
       </div>
 
-      <InsightPanel platform={platform} simulate={simulate} />
+      {/* Keyed by the filter: insights computed for another selection must not linger on screen. */}
+      <InsightPanel key={`${platform}|${simulate ?? ''}`} platform={platform} simulate={simulate} />
     </div>
   );
 }

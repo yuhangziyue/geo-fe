@@ -81,3 +81,36 @@ export interface Insight {
   detail: string;
   evidenceHref: string;
 }
+
+// Response bodies of /api/dashboard/*. The frontend imports these types instead of keeping a copy.
+
+/** Every filter value present in the data, so the UI never hard-codes platforms or topics. */
+export interface Facets {
+  platforms: Platform[];
+  topics: string[];
+}
+
+export type SummaryResponse = SummaryDTO & { facets: Facets };
+
+export interface QuestionPageResponse {
+  items: Question[];
+  total: number;
+  page: number;
+  pageSize: number;
+  facets: Facets;
+}
+
+export interface QuestionDetailResponse {
+  /** null only under ?simulate=empty. */
+  question: Question | null;
+  crossPlatform: Array<{ id: number; platform: Platform; date: string; mentioned: boolean; recommended: boolean }>;
+  analysis: {
+    citationDomains: Array<{ domain: string; count: number; owned: boolean }>;
+    ownedCitations: number;
+    products: Array<{ name: string; slug: string | null }>;
+  };
+}
+
+export interface InsightResponse {
+  insights: Insight[];
+}

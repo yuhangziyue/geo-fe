@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { DATA_DIR } from '../shared/paths';
-import { QuestionSchema, type Question } from './schema';
+import { PLATFORMS, QuestionSchema, type Facets, type Question } from './schema';
 
 const readJson = (...parts: string[]): unknown =>
   JSON.parse(fs.readFileSync(path.join(DATA_DIR, ...parts), 'utf8'));
@@ -16,6 +16,15 @@ export function loadQuestions(): Question[] {
     questionsCache = z.array(QuestionSchema).parse(readJson('project1_dashboard', 'questions.json'));
   }
   return questionsCache;
+}
+
+/** Filter options taken from the full dataset (not the filtered rows), so a narrowed view can still switch. */
+export function loadFacets(): Facets {
+  const rows = loadQuestions();
+  return {
+    platforms: PLATFORMS.filter((p) => rows.some((q) => q.platform === p)),
+    topics: [...new Set(rows.map((q) => q.topic))].sort(),
+  };
 }
 
 export function loadBrand(): { brand: string; period: string } {

@@ -35,12 +35,13 @@ export function QuestionDetailView({ id }: { id: string }) {
         status={detail.status}
         error={detail.error}
         onRetry={detail.retry}
+        refreshing={detail.refreshing}
         isEmpty={!!d && !d.question}
         skeletonHeight={320}
         empty={<p>No data for this question.</p>}
       >
         {() => {
-          const q = d!.question;
+          const q = d!.question!;
           const { analysis } = d!;
           return (
             <>

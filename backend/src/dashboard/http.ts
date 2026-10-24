@@ -3,8 +3,17 @@ import { problem } from '../shared/problem';
 import { simulateMode, sleep } from '../shared/simulate';
 import { buildInsights, isOwnedUrl } from './insight';
 import { applyFilter, computeSummary } from './metrics';
-import { loadBrand, loadQuestions, productSlugs } from './repo';
-import { InsightBodySchema, QuestionQuerySchema, SummaryFilterSchema, type Question } from './schema';
+import { loadBrand, loadFacets, loadQuestions, productSlugs } from './repo';
+import {
+  InsightBodySchema,
+  QuestionQuerySchema,
+  SummaryFilterSchema,
+  type InsightResponse,
+  type Question,
+  type QuestionDetailResponse,
+  type QuestionPageResponse,
+  type SummaryResponse,
+} from './schema';
 
 type Handler<C = unknown> = (req: Request, ctx?: C) => Promise<Response>;
 export type IdContext = { params: Promise<{ id: string }> };
@@ -41,18 +50,19 @@ function withSimulate<C>(empty: () => unknown, fn: Handler<C>): Handler<C> {
 }
 
 export const getSummary = withSimulate(
-  () => ({
+  (): SummaryResponse => ({
     ...loadBrand(),
     kpi: { visibility: 0, mentions: 0, recommendations: 0, citations: 0, citedQuestions: 0, questions: 0 },
     platforms: [],
     trend: [],
     topics: [],
     worstQuestions: [],
+    facets: loadFacets(),
   }),
   async (req) => {
     const parsed = SummaryFilterSchema.safeParse(queryObject(new URL(req.url)));
     if (!parsed.success) return invalid(parsed.error);
-    return json(computeSummary(loadQuestions(), parsed.data));
+    return json({ ...computeSummary(loadQuestions(), parsed.data), facets: loadFacets() } satisfies SummaryResponse);
   },
 );
 
@@ -64,7 +74,7 @@ function matchesText(q: Question, needle: string): boolean {
 }
 
 export const listQuestions = withSimulate(
-  () => ({ items: [], total: 0, page: 1, pageSize: 20 }),
+  (): QuestionPageResponse => ({ items: [], total: 0, page: 1, pageSize: 20, facets: loadFacets() }),
   async (req) => {
     const parsed = QuestionQuerySchema.safeParse(queryObject(new URL(req.url)));
     if (!parsed.success) return invalid(parsed.error);
@@ -76,12 +86,18 @@ export const listQuestions = withSimulate(
         (!f.q || matchesText(q, f.q)),
     );
     const start = (f.page - 1) * f.pageSize;
-    return json({ items: rows.slice(start, start + f.pageSize), total: rows.length, page: f.page, pageSize: f.pageSize });
+    return json({
+      items: rows.slice(start, start + f.pageSize),
+      total: rows.length,
+      page: f.page,
+      pageSize: f.pageSize,
+      facets: loadFacets(),
+    } satisfies QuestionPageResponse);
   },
 );
 
 export const getQuestion = withSimulate<IdContext>(
-  () => ({ question: null, crossPlatform: [], analysis: { citationDomains: [], ownedCitations: 0, products: [] } }),
+  (): QuestionDetailResponse => ({ question: null, crossPlatform: [], analysis: { citationDomains: [], ownedCitations: 0, products: [] } }),
   async (_req, ctx) => {
     const raw = (await ctx?.params)?.id ?? '';
     const id = z.coerce.number().int().positive().safeParse(raw);
@@ -119,12 +135,12 @@ export const getQuestion = withSimulate<IdContext>(
         ownedCitations: question.citations.filter((c) => isOwnedUrl(c.url)).length,
         products: question.mentioned_products.map((name) => ({ name, slug: slugs.get(name) ?? null })),
       },
-    });
+    } satisfies QuestionDetailResponse);
   },
 );
 
 export const postInsight = withSimulate(
-  () => ({ insights: [] }),
+  (): InsightResponse => ({ insights: [] }),
   async (req) => {
     let body: unknown = {};
     const text = await req.text();
@@ -137,6 +153,6 @@ export const postInsight = withSimulate(
     }
     const parsed = InsightBodySchema.safeParse(body);
     if (!parsed.success) return invalid(parsed.error);
-    return json({ insights: buildInsights(loadQuestions(), parsed.data) });
+    return json({ insights: buildInsights(loadQuestions(), parsed.data) } satisfies InsightResponse);
   },
 );

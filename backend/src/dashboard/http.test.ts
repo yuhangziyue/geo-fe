@@ -49,6 +49,17 @@ describe('dashboard http handlers', () => {
     expect(empty.platforms).toEqual([]);
   });
 
+  it('returns facets from the full dataset, even when filtered or simulated empty', async () => {
+    const filtered = await (await listQuestions(get('/api/dashboard/questions?platform=DeepSeek'))).json();
+    expect(filtered.facets.platforms).toEqual(['ChatGPT', 'Gemini', 'Claude', 'Perplexity', 'DeepSeek']);
+    expect(filtered.facets.topics).toHaveLength(8);
+    const summary = await (await getSummary(get('/api/dashboard/summary?platform=DeepSeek'))).json();
+    expect(summary.platforms.map((p: { name: string }) => p.name)).toEqual(['DeepSeek']);
+    expect(summary.facets.platforms).toHaveLength(5);
+    const empty = await (await getSummary(get('/api/dashboard/summary?simulate=empty'))).json();
+    expect(empty.facets.topics).toHaveLength(8);
+  });
+
   it('builds insights over POST', async () => {
     const res = await postInsight(
       new Request('http://localhost/api/dashboard/insight', { method: 'POST', body: '{}' }),

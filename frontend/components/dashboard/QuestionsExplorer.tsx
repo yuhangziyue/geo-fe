@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AsyncState } from './AsyncState';
 import { StatusBadge } from './StatusBadge';
-import { PLATFORMS, TOPICS, type QuestionPage } from './types';
+import type { QuestionPage } from './types';
 import { useApi, withSimulate } from './useApi';
 
 const FILTER_KEYS = ['platform', 'mentioned', 'recommended', 'topic', 'q'] as const;
@@ -37,6 +37,10 @@ export function QuestionsExplorer() {
   };
   const hasFilters = FILTER_KEYS.some((k) => search.get(k));
   const data = list.data;
+  // Options come from the API; until the first response, keep whatever the URL already selects visible.
+  const optionsFor = (key: 'platform' | 'topic', all?: string[]) => all ?? [search.get(key)].filter((v): v is string => !!v);
+  const platforms = optionsFor('platform', data?.facets.platforms);
+  const topics = optionsFor('topic', data?.facets.topics);
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
@@ -57,14 +61,14 @@ export function QuestionsExplorer() {
           Platform
           <select className={selectCls} value={search.get('platform') ?? ''} onChange={(e) => setParam('platform', e.target.value)}>
             <option value="">All</option>
-            {PLATFORMS.map((p) => <option key={p}>{p}</option>)}
+            {platforms.map((p) => <option key={p}>{p}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
           Topic
           <select className={selectCls} value={search.get('topic') ?? ''} onChange={(e) => setParam('topic', e.target.value)}>
             <option value="">All</option>
-            {TOPICS.map((t) => <option key={t}>{t}</option>)}
+            {topics.map((t) => <option key={t}>{t}</option>)}
           </select>
         </label>
         {(['mentioned', 'recommended'] as const).map((k) => (
@@ -101,6 +105,7 @@ export function QuestionsExplorer() {
           status={list.status}
           error={list.error}
           onRetry={list.retry}
+          refreshing={list.refreshing}
           isEmpty={!!data && data.total === 0}
           skeletonHeight={300}
           empty={

@@ -1,4 +1,5 @@
 import { applyFilter, metricRow } from './metrics';
+import { topicScenario } from './repo';
 import { OWNED_DOMAIN, type Insight, type Question, type SummaryFilter } from './schema';
 
 export const isOwnedUrl = (url: string) => {
@@ -14,6 +15,7 @@ function href(filter: SummaryFilter, extra: Record<string, string>): string {
   const p = new URLSearchParams();
   if (filter.platform) p.set('platform', filter.platform);
   if (filter.topic) p.set('topic', filter.topic);
+  if (filter.intent) p.set('intent', filter.intent);
   for (const [k, v] of Object.entries(extra)) p.set(k, v);
   return `/dashboard/questions?${p.toString()}`;
 }
@@ -42,12 +44,30 @@ export function buildInsights(questions: Question[], filter: SummaryFilter): Ins
   });
 
   const weakT = [...topics].sort((a, b) => a.visibility - b.visibility)[0];
+  const scenario = topicScenario(weakT.name);
   out.push({
     id: 'weak-topic',
     title: `${weakT.name} is the weakest topic`,
-    detail: `Visibility on ${weakT.name} is ${weakT.visibility}% with only ${weakT.recommendations} recommendations out of ${weakT.questions} questions. Strengthen product content for this scenario.`,
+    detail: `Visibility on ${weakT.name} is ${weakT.visibility}% with only ${weakT.recommendations} recommendations out of ${weakT.questions} questions. ${
+      scenario
+        ? `Its content lives on the ${scenario.name} scenario page: strengthen that page and the products it lists.`
+        : 'No scenario page covers this topic yet; it needs its own content.'
+    }`,
     evidenceHref: href(filter, { topic: weakT.name, mentioned: 'false' }),
+    action: scenario ? { label: `Open the ${scenario.name} scenario page`, href: `/scenarios/${scenario.slug}` } : undefined,
   });
+
+  // Intent types are dataset labels without a definition: report the gap, do not explain it.
+  const intents = groupMetrics(rows, (q) => q.intent_type);
+  if (intents.length > 1) {
+    const weakI = [...intents].sort((a, b) => a.visibility - b.visibility || a.name.localeCompare(b.name))[0];
+    out.push({
+      id: 'weak-intent',
+      title: `Intent ${weakI.name} questions mention the brand least`,
+      detail: `Intent ${weakI.name} covers ${weakI.questions} questions with ${weakI.visibility}% visibility (${weakI.mentions}/${weakI.questions}), against ${all.visibility}% overall. The dataset does not define intent types, so treat this as a segment to inspect, not a cause.`,
+      evidenceHref: href(filter, { intent: weakI.name, mentioned: 'false' }),
+    });
+  }
 
   const notRec = all.mentions - all.recommendations;
   out.push({

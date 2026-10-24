@@ -8,7 +8,7 @@ import { StatusBadge } from './StatusBadge';
 import type { QuestionPage } from './types';
 import { useApi, withSimulate } from './useApi';
 
-const FILTER_KEYS = ['platform', 'mentioned', 'recommended', 'topic', 'q'] as const;
+const FILTER_KEYS = ['platform', 'mentioned', 'recommended', 'topic', 'intent', 'q'] as const;
 const selectCls = 'rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm';
 
 /** Question list. Every filter lives in the URL query, so views are shareable and back/forward works. */
@@ -38,9 +38,10 @@ export function QuestionsExplorer() {
   const hasFilters = FILTER_KEYS.some((k) => search.get(k));
   const data = list.data;
   // Options come from the API; until the first response, keep whatever the URL already selects visible.
-  const optionsFor = (key: 'platform' | 'topic', all?: string[]) => all ?? [search.get(key)].filter((v): v is string => !!v);
+  const optionsFor = (key: 'platform' | 'topic' | 'intent', all?: string[]) => all ?? [search.get(key)].filter((v): v is string => !!v);
   const platforms = optionsFor('platform', data?.facets.platforms);
   const topics = optionsFor('topic', data?.facets.topics);
+  const intents = optionsFor('intent', data?.facets.intents);
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
@@ -69,6 +70,13 @@ export function QuestionsExplorer() {
           <select className={selectCls} value={search.get('topic') ?? ''} onChange={(e) => setParam('topic', e.target.value)}>
             <option value="">All</option>
             {topics.map((t) => <option key={t}>{t}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+          Intent
+          <select className={selectCls} value={search.get('intent') ?? ''} onChange={(e) => setParam('intent', e.target.value)}>
+            <option value="">All</option>
+            {intents.map((i) => <option key={i} value={i}>Intent {i}</option>)}
           </select>
         </label>
         {(['mentioned', 'recommended'] as const).map((k) => (
@@ -141,7 +149,7 @@ export function QuestionsExplorer() {
                           <Link href={`/dashboard/questions/${q.id}`} className="font-medium text-slate-900 hover:text-indigo-600">
                             {q.question}
                           </Link>
-                          <div className="mt-0.5 text-xs text-slate-500">{q.topic} · {q.date}</div>
+                          <div className="mt-0.5 text-xs text-slate-500">{q.topic} · Intent {q.intent_type} · {q.date}</div>
                         </td>
                         <td className="py-3 pr-4 whitespace-nowrap">{q.platform}</td>
                         <td className="py-3 pr-4"><StatusBadge ok={q.brand_mentioned} yes="Yes" no="No" /></td>

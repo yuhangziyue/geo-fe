@@ -20,6 +20,7 @@ describe('buildJsonLd', () => {
     expect(byType('Product').brand['@id']).toBe(byType('Organization')['@id']);
     expect(byType('FAQPage').mainEntity).toHaveLength(product.faqs.length);
     expect(byType('Product')).not.toHaveProperty('offers');
+    expect(byType('Product')).not.toHaveProperty('dateModified'); // imported, never edited: no invented date
     expect(byType('Product').url).toBe('https://site.test/products/nova-x4');
   });
 

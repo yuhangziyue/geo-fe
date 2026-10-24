@@ -27,6 +27,8 @@ export function buildJsonLd(brand: Brand, product: ProductDetail, siteUrl: strin
         sku: product.slug,
         category: product.series.name,
         brand: { '@id': orgId },
+        // Only a real edit time; seeded content has none and gets no invented date.
+        ...(product.updatedAt ? { dateModified: product.updatedAt } : {}),
         additionalProperty: props.map((p) => ({ '@type': 'PropertyValue', ...p })),
       },
       {

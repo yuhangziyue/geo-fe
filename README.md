@@ -24,7 +24,7 @@ pnpm dev          # 自动 seed SQLite 后启动 http://localhost:3000
 |---|---|
 | `pnpm dev` | 开发模式。先把 `data/` 里的 JSON 导入 SQLite（`.local/geo.db`），再起 Next.js |
 | `pnpm demo` | seed → `next build` → `next start`。**演示「后台改内容 → 静态页与 JSON-LD 同步更新」请用这个**：dev 模式每次请求都现场渲染，看不出按需重新生成是否生效 |
-| `pnpm test` | 后端单测（Vitest，45 条） |
+| `pnpm test` | 后端单测（Vitest，57 条） |
 | `pnpm typecheck` | 前端 `tsc --noEmit` |
 
 **演示开关**：任一 Dashboard 页面加 `?simulate=slow | error | empty`，可当场切出 Loading / Error / Empty 三态（由 `DEMO_SIMULATE=0` 关闭）。
@@ -72,9 +72,9 @@ geo-fe/
 
 | 接口 | 说明 |
 |---|---|
-| `GET /api/dashboard/summary?platform=` | KPI、平台对比、日趋势、Topic、最该优化的 5 个问题 |
-| `GET /api/dashboard/questions?platform&topic&mentioned&recommended&q&page&pageSize` | 问题列表，服务端筛选与分页 |
-| `GET /api/dashboard/questions/:id` | 问题详情、跨平台对比、引用域名分组、提到的产品（链到 P2） |
+| `GET /api/dashboard/summary?platform=&intent=` | KPI、Prompt 覆盖率、平台对比、日趋势、Topic（附对应场景页）、意图分组、最该优化的 5 个 Prompt |
+| `GET /api/dashboard/questions?platform&topic&intent&mentioned&recommended&q&page&pageSize` | 问题列表，服务端筛选与分页；附 `facets`（全量平台 / Topic / 意图） |
+| `GET /api/dashboard/questions/:id` | 问题详情、同一 Prompt 的其他观测、引用域名分组、提到的产品与对应场景页（链到 P2） |
 | `POST /api/dashboard/insight` | 规则版 AI Insight，body 为当前筛选 |
 | `GET /api/knowledge/products?series&scenario` · `GET /api/knowledge/products/:slug` | 产品列表与详情 |
 | `POST /api/knowledge/products` · `PUT /api/knowledge/products/:slug` | 后台新增与编辑，成功后触发页面重新生成 |
@@ -88,6 +88,20 @@ curl 'localhost:3000/api/dashboard/questions?platform=Foo'                      
 curl -X POST localhost:3000/api/knowledge/ask -H 'content-type: application/json' \
   -d '{"question":"Does Nova X8 support PoE?","productSlug":"nova-x8"}'           # conflict: true
 ```
+
+### P1 数据模型
+
+`questions.json` 的一行是一次**观测**（run）：某个 Prompt 在某个平台、某一天被问一次。120 行 = 32 个 Prompt × 3–4 次观测，其中 31 个 Prompt 有同一平台在不同日期被问两次。同一 Prompt 的 Topic 和意图 100% 一致，所以它们属于 Prompt。
+
+```mermaid
+erDiagram
+  prompt ||--o{ run : "asked as (platform, date)"
+  run ||--o{ citation : cites
+  run }o--o{ product : "mentions (by name → P2 slug)"
+  prompt }o--o| scenario : "topic → scenario (hand-curated)"
+```
+
+数据没有 Prompt id，`prompt_id` 由规范化后的问题文本哈希派生（[repo.ts](backend/src/dashboard/repo.ts)）。行内业务规则（推荐必先提及、提到产品必算提及、`citation_count` = 引用条数）写在 zod 的 `superRefine` 里，数据漂移会在加载时报错，不只校验形状。
 
 ### P2 数据模型
 
@@ -116,6 +130,9 @@ erDiagram
 **② 指标一律由问题明细重算，summary 文件只用来对账**
 - Visibility = 被提及的问题数 ÷ 问题数，即提及率，页面上直接写明；Citations 71 是引用**条数**，另外标出只有 42 个问题有引用（35%）。
 - 取整用「四舍六入五成双」：Claude 15/24 = 62.5，出题方汇总是 62。用 JS `Math.round` 会得到 63，单测对出题方汇总逐项比对时发现。
+- 行是观测，内容按 Prompt 改，所以另算 **Prompt 覆盖率**（每次观测都提到品牌的 Prompt 数：32 个里 9 个），「最该优化」按 Prompt 去重、按最差一次观测排序，而不是按行。
+- **自有来源按域名判定，不看 `source_type = Official`**：13 条 Official 引用里只有 1 条在 `astervision.example` 上；7 条自有域名引用分散在 Industry / Review / Media。Official 是数据方的来源类别，「是否自有」要另算，混用会把自有占比算错。
+- 意图类型（`intent_type`）进入筛选、分组和 Insight（A 类 60 题、提及率 65%，最低）。数据说明写的是 S/A/B/C，但本期没有 S 类，页面如实标注；数据没定义各类含义，所以只报差异，不解释原因。
 - 反方：数据量小，直接读 summary 更省事。但数据源一旦换成真实明细，接口不用改。
 - 何时换：明细到百万行以上时，改为在数据库或 OLAP 里按天、平台、Topic 预聚合，接口契约不变。
 
@@ -134,6 +151,7 @@ erDiagram
 - **不补价格和评分**：数据里没有。Google 的 Product 富摘要需要 offers / review / aggregateRating 之一，所以 Rich Results Test 会对 Product 报缺字段。这里的 Product 标记用来**声明实体**，让 AI 系统理解「哪个品牌的哪款产品、有什么属性」，这正是 GEO 的价值所在。
 - 反方：补一个 Mock 价格就能让 Rich Results Test 全绿。但结构化数据必须和页面可见内容一致，编造价格既违反 Google 的结构化数据政策，也违背「不改原始数据含义」。
 - 何时换：有真实价格或评价数据时补上 `offers` / `aggregateRating`，争取富摘要。
+- `dateModified` 同理：产品表有 `updated_at`，后台保存时写入，JSON-LD 和页面上的「Last updated」据此输出；导入的内容没有编辑时间，就不输出，不拿导入时间冒充修改时间。
 
 **⑥ Ask AI：只依据知识库作答，资料冲突时明说**
 - 关键词检索，「是否支持某功能」类问题优先查规格（数据里这类 FAQ 是答非所问的模板句）；查不到就明确说没有。
@@ -146,6 +164,8 @@ erDiagram
 - `best_for` 有 15 种取值，场景表只有 8 个。名称完全相同的才链接到场景实体（有自己的页面和 JSON-LD），其余原样保留。
 - 反方：把 Small Retail 合并进 Retail、Multi-site Deployment 合并进 Multi-site，场景页会更饱满。但这改变了原始含义，数据说明不允许。
 - 何时换：内容团队确认了场景分类后，在后台维护「标签 → 场景」映射表，由人来决定合并，而不是代码替数据决定。
+- 同一原则用在 P1 → P2 的桥上：Topic 和场景名字从不完全相同（Warehouse Security / Warehouse），所以用一张人工映射表（[topic-scenario.ts](backend/src/dashboard/topic-scenario.ts)），6 个 Topic 有对应场景，Low-light Imaging（能力）和 Product Comparison（购买阶段）明确为无。看板上「最弱 Topic」和问题详情因此能直接指到该改的场景页，单测保证映射里的场景都真实存在。
+- 没有任何产品的场景页（Multi-site：数据里写的是 Multi-site Deployment）仍可访问，但 `noindex`、不进 sitemap 和 llms.txt、不输出 JSON-LD：空页对 SEO 和 GEO 都是薄内容。
 
 ---
 

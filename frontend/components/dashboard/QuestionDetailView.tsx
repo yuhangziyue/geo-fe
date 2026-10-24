@@ -113,16 +113,24 @@ export function QuestionDetailView({ id }: { id: string }) {
                     )}
                   </Card>
 
-                  <Card title="Same question on other platforms">
-                    {d!.crossPlatform.length === 0 ? (
-                      <p className="text-sm text-slate-500">This question was only asked on {q.platform}.</p>
+                  {analysis.topicScenario && (
+                    <Card title="Where to improve" subtitle={`Topic ${q.topic} maps to a Knowledge Center scenario`}>
+                      <a href={`/scenarios/${analysis.topicScenario.slug}`} className="text-sm font-medium text-indigo-600 hover:underline">
+                        {analysis.topicScenario.name} scenario page ↗
+                      </a>
+                    </Card>
+                  )}
+
+                  <Card title="Other runs of this prompt" subtitle="Other platforms, or the same platform on another day">
+                    {d!.otherRuns.length === 0 ? (
+                      <p className="text-sm text-slate-500">This prompt was run only once.</p>
                     ) : (
                       <table className="w-full text-sm">
                         <thead className="text-left text-xs uppercase text-slate-500">
                           <tr><th className="pb-2 font-medium">Platform</th><th className="pb-2 font-medium">Mentioned</th><th className="pb-2 font-medium">Recommended</th></tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {d!.crossPlatform.map((c) => (
+                          {d!.otherRuns.map((c) => (
                             <tr key={c.id}>
                               <td className="py-2">
                                 <Link href={`/dashboard/questions/${c.id}`} className="font-medium text-slate-800 hover:text-indigo-600">{c.platform}</Link>

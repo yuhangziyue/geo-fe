@@ -128,6 +128,7 @@ export function Overview() {
 
   const k = data?.kpi;
   const citedPct = k && k.questions ? Math.round((k.citedQuestions / k.questions) * 100) : 0;
+  const weakestTopic = data?.topics.length ? data.topics.reduce((a, b) => (b.visibility < a.visibility ? b : a)) : null;
 
   return (
     <div className="space-y-6">
@@ -163,11 +164,17 @@ export function Overview() {
         empty={<p>No questions were analyzed for this selection.</p>}
       >
         {() => (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <KpiCard label="Visibility" value={`${k!.visibility}%`} hint="Visibility = mention rate (questions mentioning the brand ÷ questions analyzed)" sub={`${k!.mentions} of ${k!.questions} questions mention the brand`} />
             <KpiCard label="Mentions" value={String(k!.mentions)} hint="Questions whose answer mentions the brand" />
             <KpiCard label="Recommendations" value={String(k!.recommendations)} hint="Questions whose answer recommends the brand" sub={`${k!.mentions - k!.recommendations} mentions without a recommendation`} />
             <KpiCard label="Citations" value={String(k!.citations)} hint="Total cited sources across all answers" sub={`${k!.citations} citations · ${k!.citedQuestions} questions (${citedPct}%)`} />
+            <KpiCard
+              label="Prompt coverage"
+              value={`${data!.prompts.mentionedEverywhere}/${data!.prompts.total}`}
+              hint="Prompts whose every run (each platform, each day asked) mentions the brand. Rows are runs; content is written per prompt."
+              sub={`prompts mentioned on every run · ${data!.prompts.mentionedNowhere} never mentioned`}
+            />
           </div>
         )}
       </AsyncState>
@@ -199,8 +206,22 @@ export function Overview() {
               />
             )}
           </AsyncState>
+          {weakestTopic && (
+            <p className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-600">
+              Weakest: <span className="font-medium text-slate-800">{weakestTopic.topic}</span>
+              {' · '}
+              {weakestTopic.scenario ? (
+                // Another app (own root layout): a plain link, not next/link.
+                <a href={`/scenarios/${weakestTopic.scenario.slug}`} className="font-medium text-indigo-600 hover:underline">
+                  improve the {weakestTopic.scenario.name} scenario page ↗
+                </a>
+              ) : (
+                <span>no scenario page covers this topic yet</span>
+              )}
+            </p>
+          )}
         </Card>
-        <Card title="Questions to fix first" subtitle="Not mentioned first, then mentioned but not recommended">
+        <Card title="Prompts to fix first" subtitle="One entry per prompt · never mentioned first, then mentioned but not recommended">
           <AsyncState
             status={summary.status}
             error={summary.error}
@@ -215,8 +236,9 @@ export function Overview() {
                   <li key={w.id}>
                     <Link href={`/dashboard/questions/${w.id}`} className="flex items-center justify-between gap-4 py-3 hover:bg-slate-50">
                       <span className="text-sm text-slate-800">{w.question}</span>
-                      <span className="shrink-0 text-xs text-slate-500">
-                        {w.platform} · {w.topic}
+                      <span className="shrink-0 text-right text-xs text-slate-500">
+                        {w.platforms.join(', ')} · {w.topic}
+                        <span className="block">{w.badRuns} of {w.runs} runs fall short</span>
                       </span>
                     </Link>
                   </li>
@@ -226,6 +248,31 @@ export function Overview() {
           </AsyncState>
         </Card>
       </div>
+
+      <Card title="By intent type" subtitle="Intent labels come from the dataset, which does not define them · click to drill down">
+        <AsyncState status={summary.status} error={summary.error} onRetry={summary.retry} refreshing={summary.refreshing} isEmpty={!!data && data.intents.length === 0}>
+          {() => (
+            <>
+              <ul className="grid gap-3 sm:grid-cols-3">
+                {data!.intents.map((i) => (
+                  <li key={i.intent}>
+                    <Link href={questionsHref(search, { intent: i.intent })} className="block rounded-lg border border-slate-200 p-4 hover:border-indigo-300 hover:bg-slate-50">
+                      <p className="text-sm font-medium text-slate-500">Intent {i.intent}</p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{i.visibility}%</p>
+                      <p className="mt-1 text-xs text-slate-500">{i.questions} questions · {i.recommendations} recommendations</p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {data!.missingIntents.length > 0 && (
+                <p className="mt-3 text-xs text-slate-500">
+                  The data notes also list intent {data!.missingIntents.join(', ')}; no question in this selection has it.
+                </p>
+              )}
+            </>
+          )}
+        </AsyncState>
+      </Card>
 
       {/* Keyed by the filter: insights computed for another selection must not linger on screen. */}
       <InsightPanel key={`${platform}|${simulate ?? ''}`} platform={platform} simulate={simulate} />

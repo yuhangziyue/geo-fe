@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { useTempDb } from './test-db';
-import { getProduct } from './repo';
+import { getBrand, getProduct } from './repo';
+import { buildJsonLd } from './jsonld';
 import { askHandler, createProductHandler, getProductHandler, listProductsHandler, updateProductHandler } from './http';
 import type { ProductDetail, ProductInput } from './schema';
 
@@ -58,6 +59,11 @@ describe('knowledge http handlers', () => {
     const res = await updateProductHandler(json('PUT', input), 'nova-x4');
     expect(res.status).toBe(200);
     expect(getProduct('nova-x4')!.features).toEqual(['4K imaging', 'Smart IR night vision']);
+    // A real edit stamps updatedAt, which the JSON-LD then exposes as dateModified.
+    const updatedAt = getProduct('nova-x4')!.updatedAt!;
+    expect(Date.now() - Date.parse(updatedAt)).toBeLessThan(60_000);
+    const ld = buildJsonLd(getBrand(), getProduct('nova-x4')!, 'https://site.test') as { '@graph': Array<Record<string, unknown>> };
+    expect(ld['@graph'].find((n) => n['@type'] === 'Product')!.dateModified).toBe(updatedAt);
   });
 
   it('404s a PUT on an unknown slug', async () => {

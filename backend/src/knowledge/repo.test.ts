@@ -43,6 +43,16 @@ describe('knowledge repo', () => {
     expect(t.bestFor.find((b) => b.label === 'Critical Infrastructure')?.scenarioSlug).toBeNull();
   });
 
+  it('counts the products linked to each scenario; Multi-site has none (best_for says "Multi-site Deployment")', () => {
+    const counts = Object.fromEntries(listScenarios().map((s) => [s.slug, s.productCount]));
+    expect(counts['multi-site']).toBe(0);
+    expect(counts.warehouse).toBe(getScenario('warehouse')!.products.length);
+  });
+
+  it('leaves updatedAt null for imported content', () => {
+    expect(getProduct('nova-x4')!.updatedAt).toBeNull();
+  });
+
   it('returns null for unknown slugs', () => {
     expect(getProduct('nope')).toBeNull();
   });

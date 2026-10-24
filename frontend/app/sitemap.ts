@@ -7,6 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${base}/products`, changeFrequency: 'weekly', priority: 1 },
     ...listProducts({}).map((p) => ({ url: `${base}/products/${p.slug}`, changeFrequency: 'monthly' as const, priority: 0.8 })),
-    ...listScenarios().map((s) => ({ url: `${base}/scenarios/${s.slug}`, changeFrequency: 'monthly' as const, priority: 0.6 })),
+    // Scenarios with no linked product are thin pages: kept reachable, left out of the index.
+    ...listScenarios().filter((s) => s.productCount > 0).map((s) => ({ url: `${base}/scenarios/${s.slug}`, changeFrequency: 'monthly' as const, priority: 0.6 })),
   ];
 }

@@ -61,9 +61,16 @@ export function InsightPanel({ platform, simulate }: { platform: string; simulat
                       {n + 1}. {i.title}
                     </p>
                     <p className="mt-1 text-sm text-slate-600">{i.detail}</p>
-                    <Link href={i.evidenceHref} className="mt-2 inline-block text-sm font-medium text-indigo-600 hover:underline">
-                      View evidence →
-                    </Link>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium">
+                      <Link href={i.evidenceHref} className="text-indigo-600 hover:underline">
+                        View evidence →
+                      </Link>
+                      {i.action && (
+                        <a href={i.action.href} className="text-emerald-700 hover:underline">
+                          {i.action.label} ↗
+                        </a>
+                      )}
+                    </div>
                   </li>
                 ))}
             </ol>

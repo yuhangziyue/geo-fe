@@ -22,6 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description: s.description,
+    // No linked product yet: a thin page, so keep it out of search and AI indexes until content exists.
+    ...(s.products.length === 0 ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: url },
     openGraph: { title: `${title} | AsterVision`, description: s.description, url, type: 'website', siteName: 'AsterVision' },
   };
@@ -31,12 +33,12 @@ export default async function ScenarioPage({ params }: Props) {
   const { slug } = await params;
   const s = getScenario(slug);
   if (!s) notFound();
-  const jsonLd = buildScenarioJsonLd(getBrand(), s, SITE_URL);
-  const others = listScenarios().filter((x) => x.slug !== s.slug);
+  const jsonLd = s.products.length > 0 ? buildScenarioJsonLd(getBrand(), s, SITE_URL) : null;
+  const others = listScenarios().filter((x) => x.slug !== s.slug && x.productCount > 0);
 
   return (
     <article>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />}
 
       <nav aria-label="Breadcrumb" className="text-sm text-slate-500">
         <Link href="/products" className="hover:text-slate-800">Products</Link> / <span className="text-slate-800">Scenarios</span> /{' '}
@@ -57,7 +59,7 @@ export default async function ScenarioPage({ params }: Props) {
         </ul>
       ) : (
         <p className="mt-8 rounded-md bg-slate-100 p-4 text-sm text-slate-600">
-          No product lists &quot;{s.name}&quot; under Best For. Products are linked to a scenario only when the names match exactly.
+          Products for {s.name} are coming soon. <Link href="/products" className="text-sky-700 hover:underline">Browse all products</Link>.
         </p>
       )}
 

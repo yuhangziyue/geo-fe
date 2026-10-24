@@ -52,6 +52,11 @@ export default async function ProductPage({ params }: Props) {
           <StatusBadge status={p.status} />
         </div>
         <p className="mt-2 text-lg text-slate-600">{p.shortDescription}</p>
+        {p.updatedAt && (
+          <p className="mt-2 text-xs text-slate-500">
+            Last updated <time dateTime={p.updatedAt}>{p.updatedAt.slice(0, 10)}</time>
+          </p>
+        )}
       </header>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-3">

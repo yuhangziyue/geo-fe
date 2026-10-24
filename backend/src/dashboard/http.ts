@@ -3,7 +3,7 @@ import { problem } from '../shared/problem';
 import { simulateMode, sleep } from '../shared/simulate';
 import { buildInsights, isOwnedUrl } from './insight';
 import { applyFilter, computeSummary } from './metrics';
-import { loadBrand, loadFacets, loadQuestions, productSlugs } from './repo';
+import { loadBrand, loadFacets, loadQuestions, productSlugs, topicScenario } from './repo';
 import {
   InsightBodySchema,
   QuestionQuerySchema,
@@ -53,9 +53,12 @@ export const getSummary = withSimulate(
   (): SummaryResponse => ({
     ...loadBrand(),
     kpi: { visibility: 0, mentions: 0, recommendations: 0, citations: 0, citedQuestions: 0, questions: 0 },
+    prompts: { total: 0, mentionedEverywhere: 0, mentionedNowhere: 0 },
     platforms: [],
     trend: [],
     topics: [],
+    intents: [],
+    missingIntents: [],
     worstQuestions: [],
     facets: loadFacets(),
   }),
@@ -97,7 +100,11 @@ export const listQuestions = withSimulate(
 );
 
 export const getQuestion = withSimulate<IdContext>(
-  (): QuestionDetailResponse => ({ question: null, crossPlatform: [], analysis: { citationDomains: [], ownedCitations: 0, products: [] } }),
+  (): QuestionDetailResponse => ({
+    question: null,
+    otherRuns: [],
+    analysis: { topicScenario: null, citationDomains: [], ownedCitations: 0, products: [] },
+  }),
   async (_req, ctx) => {
     const raw = (await ctx?.params)?.id ?? '';
     const id = z.coerce.number().int().positive().safeParse(raw);
@@ -106,8 +113,8 @@ export const getQuestion = withSimulate<IdContext>(
     const question = all.find((q) => q.id === id.data);
     if (!question) return problem(404, 'Question not found', `No question with id ${id.data}`);
 
-    const crossPlatform = all
-      .filter((q) => q.question === question.question && q.id !== question.id)
+    const otherRuns = all
+      .filter((q) => q.prompt_id === question.prompt_id && q.id !== question.id)
       .sort((a, b) => a.date.localeCompare(b.date))
       .map(({ id, platform, date, brand_mentioned, brand_recommended }) => ({
         id,
@@ -129,8 +136,9 @@ export const getQuestion = withSimulate<IdContext>(
 
     return json({
       question,
-      crossPlatform,
+      otherRuns,
       analysis: {
+        topicScenario: topicScenario(question.topic),
         citationDomains,
         ownedCitations: question.citations.filter((c) => isOwnedUrl(c.url)).length,
         products: question.mentioned_products.map((name) => ({ name, slug: slugs.get(name) ?? null })),

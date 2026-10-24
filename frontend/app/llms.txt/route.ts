@@ -22,7 +22,7 @@ export function GET(): Response {
     ]),
     '## Scenarios',
     '',
-    ...listScenarios().map((s) => `- [${s.name}](${base}/scenarios/${s.slug}): ${s.description}`),
+    ...listScenarios().filter((s) => s.productCount > 0).map((s) => `- [${s.name}](${base}/scenarios/${s.slug}): ${s.description}`),
     '',
   ];
   return new Response(lines.join('\n'), { headers: { 'content-type': 'text/plain; charset=utf-8' } });

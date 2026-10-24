@@ -38,6 +38,15 @@ describe('dashboard http handlers', () => {
     const body = await res.json();
     expect(body.question.id).toBe(1);
     expect(body.analysis.products).toEqual([{ name: 'Nova PTZ 30', slug: expect.any(String) }]);
+    // Other runs are matched by prompt, and include the same platform on another day.
+    expect(body.otherRuns.length).toBeGreaterThan(0);
+    for (const r of body.otherRuns) expect(r.id).not.toBe(1);
+  });
+
+  it('filters questions by intent and exposes intents as facets', async () => {
+    const body = await (await listQuestions(get('/api/dashboard/questions?intent=A'))).json();
+    expect(body.total).toBe(60);
+    expect(body.facets.intents).toEqual(['A', 'B', 'C']);
   });
 
   it('serves the summary and the simulate modes', async () => {
@@ -64,6 +73,6 @@ describe('dashboard http handlers', () => {
     const res = await postInsight(
       new Request('http://localhost/api/dashboard/insight', { method: 'POST', body: '{}' }),
     );
-    expect((await res.json()).insights).toHaveLength(5);
+    expect((await res.json()).insights).toHaveLength(6);
   });
 });

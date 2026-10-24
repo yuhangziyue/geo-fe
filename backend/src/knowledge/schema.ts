@@ -44,6 +44,8 @@ export type ProductSummary = {
 export type ProductDetail = ProductSummary & {
   id: number;
   overview: string;
+  /** Last admin save (ISO); null for content that has not been edited since import. */
+  updatedAt: string | null;
   bestFor: Array<{ label: string; scenarioSlug: string | null }>;
   faqs: Array<{ id: number; position: number; question: string; answer: string }>;
   specs: Specs;
@@ -53,5 +55,6 @@ export type ProductDetail = ProductSummary & {
 export type Brand = { name: string; slug: string; description: string; website: string; founded: string; headquarters: string; coreCapabilities: string[] };
 export type SeriesInfo = { slug: string; name: string; description: string; productCount: number };
 
-export type ScenarioInfo = { slug: string; name: string; description: string };
+/** productCount: products whose best_for names the scenario exactly. 0 = nothing to show yet (kept out of the index). */
+export type ScenarioInfo = { slug: string; name: string; description: string; productCount: number };
 export type ScenarioDetail = ScenarioInfo & { products: ProductSummary[] };

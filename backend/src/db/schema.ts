@@ -30,6 +30,8 @@ export const product = sqliteTable('product', {
   resolution: text('resolution'), // null = not applicable (Edge series)
   connectivity: text('connectivity').notNull(),
   environment: text('environment').notNull(),
+  // ISO time of the last admin save. NULL for seeded rows: the source data has no edit date and we do not invent one.
+  updatedAt: text('updated_at'),
 });
 
 export const productFeature = sqliteTable('product_feature', {
@@ -81,7 +83,8 @@ export const DDL = [
      name TEXT NOT NULL, description TEXT NOT NULL)`,
   `CREATE TABLE product (id INTEGER PRIMARY KEY, series_id INTEGER NOT NULL REFERENCES series(id), slug TEXT NOT NULL UNIQUE,
      name TEXT NOT NULL, short_description TEXT NOT NULL, overview TEXT NOT NULL,
-     status TEXT NOT NULL CHECK (status IN ('active','beta')), resolution TEXT, connectivity TEXT NOT NULL, environment TEXT NOT NULL)`,
+     status TEXT NOT NULL CHECK (status IN ('active','beta')), resolution TEXT, connectivity TEXT NOT NULL, environment TEXT NOT NULL,
+     updated_at TEXT)`,
   `CREATE TABLE product_feature (id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES product(id) ON DELETE CASCADE,
      position INTEGER NOT NULL, text TEXT NOT NULL)`,
   `CREATE TABLE product_ai_feature (id INTEGER PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES product(id) ON DELETE CASCADE,

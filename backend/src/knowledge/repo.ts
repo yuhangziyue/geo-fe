@@ -55,8 +55,13 @@ export function listSeries(): SeriesInfo[] {
 }
 
 export function listScenarios(): ScenarioInfo[] {
-  return getDb().select({ slug: t.scenario.slug, name: t.scenario.name, description: t.scenario.description })
-    .from(t.scenario).orderBy(asc(t.scenario.id)).all();
+  return getDb()
+    .select({
+      slug: t.scenario.slug, name: t.scenario.name, description: t.scenario.description,
+      productCount: sql<number>`count(distinct ${t.productBestFor.productId})`,
+    })
+    .from(t.scenario).leftJoin(t.productBestFor, eq(t.productBestFor.scenarioId, t.scenario.id))
+    .groupBy(t.scenario.id).orderBy(asc(t.scenario.id)).all();
 }
 
 // Products are linked only where best_for names the scenario exactly (unmatched labels stay plain tags).
@@ -95,7 +100,7 @@ export function getProduct(slug: string): ProductDetail | null {
     .map((x) => ({ slug: x.slug, name: x.name, status: x.status, specs: specsOf(x) }));
   return {
     ...toSummary(p, { slug: s.slug, name: s.name }),
-    id: p.id, overview: p.overview, features: texts(t.productFeature, p.id), bestFor, faqs,
+    id: p.id, overview: p.overview, updatedAt: p.updatedAt, features: texts(t.productFeature, p.id), bestFor, faqs,
     specs: specsOf(p), seriesSiblings: siblings,
   };
 }
@@ -120,6 +125,7 @@ function productValues(input: ProductInput) {
   return {
     seriesId: s.id, slug: input.slug, name: input.name, shortDescription: input.shortDescription, overview: input.overview,
     status: input.status, resolution: input.specs.resolution, connectivity: input.specs.connectivity, environment: input.specs.environment,
+    updatedAt: new Date().toISOString(),
   };
 }
 

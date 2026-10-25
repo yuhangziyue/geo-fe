@@ -7,6 +7,7 @@ const WINDOW_DAYS = 7;
 /**
  * 7-day rolling visibility over `days` (the full period, so a filter keeps the axis). Daily values are kept as
  * faint samples; a day without questions is null, and so is a window that is not full yet or has no questions.
+ * The numerators (…Mentions / …Questions) are plain counts and are 0, never null, when there is nothing to count.
  */
 export function buildTrend(rows: Question[], days: string[]): TrendPoint[] {
   const byDay = new Map<string, { n: number; m: number }>();
@@ -30,8 +31,12 @@ export function buildTrend(rows: Question[], days: string[]): TrendPoint[] {
       date,
       dailyVisibility: day.n > 0 ? pct(day.m, day.n) : null,
       dailyN: day.n,
+      dailyMentions: day.m,
+      dailyQuestions: day.n,
       rollingVisibility: full && rollingN > 0 ? pct(rollingM, rollingN) : null,
       rollingN,
+      rollingMentions: rollingM,
+      rollingQuestions: rollingN,
     };
   });
 }

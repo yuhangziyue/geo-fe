@@ -1,6 +1,7 @@
 import { applyFilter } from '../metrics';
 import {
   INTENTS,
+  matrixCellLook,
   PLATFORMS,
   type GlobalFilter,
   type IntentTier,
@@ -17,19 +18,17 @@ const latest = (a: Question, b: Question) => b.date.localeCompare(a.date) || b.i
 /** One question × platform cell (05 §2.3). `runs` are that question's runs on that platform (0, 1 or 2). */
 export function matrixCell(runs: Question[]): MatrixCell {
   const n = runs.length;
-  if (n === 0) return { state: 'not_tracked', n: 0, recommended: 0, mentioned: 0, label: '—', latestRunId: null };
   const recommended = runs.filter((q) => q.brand_recommended).length;
   const mentioned = runs.filter((q) => q.brand_mentioned).length;
-  const latestRunId = [...runs].sort(latest)[0].id;
-  const [state, label]: [MatrixState, string] =
-    recommended === n
-      ? ['recommended', `${recommended}/${n}`]
-      : recommended > 0
-        ? ['partly', `${recommended}/${n}`]
-        : mentioned > 0
-          ? ['mentioned_only', 'M']
-          : ['not_mentioned', '✕'];
-  return { state, n, recommended, mentioned, label, latestRunId };
+  const last = n > 0 ? [...runs].sort(latest)[0] : null;
+  return {
+    ...matrixCellLook(n, recommended, mentioned),
+    n,
+    recommended,
+    mentioned,
+    latestRunId: last?.id ?? null,
+    latestDate: last?.date ?? null,
+  };
 }
 
 /** Not mentioned × 2 + mentioned only × 1. */

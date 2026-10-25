@@ -14,8 +14,13 @@ import {
   globalFilterHref,
   parseGlobalFilter,
   verificationOf,
+  matrixCellLook,
+  PLATFORMS,
   type ActionCard,
+  type MatrixState,
 } from './schema';
+import { TRUTH_MATRIX } from './__fixtures__/truth';
+import { loadQuestions } from './repo';
 
 // v3 contract (T0). Owner: T0 — sub-tasks import these, they do not edit them.
 
@@ -171,5 +176,35 @@ describe('compareActionCards (I5 ruling)', () => {
       'decision-tier-untracked',
     ]);
     expect(RULE_IDS.indexOf('mention-not-recommended')).toBeLessThan(RULE_IDS.indexOf('owned-source-share'));
+  });
+});
+
+/*
+ * The five-state rule of one matrix cell, in one place (T-FIX §3): the backend matrix (aggregations/matrix.ts) and the
+ * detail page's replica (frontend detail/coverage.ts cellOf) both call it. Formerly F2's scratchpad test of cellOf.
+ */
+describe('matrixCellLook', () => {
+  it('labels: r/n when all or some recommended, M, ✕, —', () => {
+    expect(matrixCellLook(2, 2, 2)).toEqual({ state: 'recommended', label: '2/2' });
+    expect(matrixCellLook(1, 1, 1)).toEqual({ state: 'recommended', label: '1/1' });
+    expect(matrixCellLook(2, 1, 2)).toEqual({ state: 'partly', label: '1/2' });
+    expect(matrixCellLook(2, 1, 1)).toEqual({ state: 'partly', label: '1/2' });
+    expect(matrixCellLook(2, 0, 1)).toEqual({ state: 'mentioned_only', label: 'M' });
+    expect(matrixCellLook(1, 0, 0)).toEqual({ state: 'not_mentioned', label: '✕' });
+    expect(matrixCellLook(0, 0, 0)).toEqual({ state: 'not_tracked', label: '—' });
+  });
+
+  it('reproduces the matrix state distribution over every question × platform cell of questions.json', () => {
+    const cells = new Map<string, { n: number; r: number; m: number }>();
+    for (const q of loadQuestions()) {
+      const k = `${q.question}|${q.platform}`;
+      const c = cells.get(k) ?? { n: 0, r: 0, m: 0 };
+      cells.set(k, { n: c.n + 1, r: c.r + Number(q.brand_recommended), m: c.m + Number(q.brand_mentioned) });
+    }
+    const counts: Record<MatrixState, number> = { recommended: 0, partly: 0, mentioned_only: 0, not_mentioned: 0, not_tracked: 0 };
+    for (const c of cells.values()) counts[matrixCellLook(c.n, c.r, c.m).state] += 1;
+    counts.not_tracked = TRUTH_MATRIX.rows * PLATFORMS.length - cells.size;
+    expect(cells.size).toBe(TRUTH_MATRIX.trackedCells);
+    expect(counts).toEqual(TRUTH_MATRIX.stateCounts);
   });
 });

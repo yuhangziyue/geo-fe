@@ -18,7 +18,7 @@ const run = (id: number, date: string, mentioned: boolean, recommended: boolean)
 describe('matrixCell — the five states (05 §2.3)', () => {
   it('recommended: every run recommended → "r/n"', () => {
     expect(matrixCell([run(1, '2026-08-01', true, true), run(2, '2026-08-03', true, true)])).toEqual({
-      state: 'recommended', n: 2, recommended: 2, mentioned: 2, label: '2/2', latestRunId: 2,
+      state: 'recommended', n: 2, recommended: 2, mentioned: 2, label: '2/2', latestRunId: 2, latestDate: '2026-08-03',
     });
     expect(matrixCell([run(7, '2026-08-01', true, true)])).toMatchObject({ state: 'recommended', label: '1/1' });
   });
@@ -36,21 +36,21 @@ describe('matrixCell — the five states (05 §2.3)', () => {
   });
 
   it('not_mentioned: no run mentions the brand → "✕"', () => {
-    expect(matrixCell([run(1, '2026-08-01', false, false)])).toMatchObject({ state: 'not_mentioned', label: '✕', latestRunId: 1 });
+    expect(matrixCell([run(1, '2026-08-01', false, false)])).toMatchObject({ state: 'not_mentioned', label: '✕', latestRunId: 1, latestDate: '2026-08-01' });
   });
 
   it('not_tracked: no run at all → "—", no click-through', () => {
-    expect(matrixCell([])).toEqual({ state: 'not_tracked', n: 0, recommended: 0, mentioned: 0, label: '—', latestRunId: null });
+    expect(matrixCell([])).toEqual({ state: 'not_tracked', n: 0, recommended: 0, mentioned: 0, label: '—', latestRunId: null, latestDate: null });
   });
 
   it('latestRunId is the latest date, then the highest id on the same date', () => {
-    expect(matrixCell([run(9, '2026-08-05', true, true), run(3, '2026-08-20', true, true)]).latestRunId).toBe(3);
+    expect(matrixCell([run(9, '2026-08-05', true, true), run(3, '2026-08-20', true, true)])).toMatchObject({ latestRunId: 3, latestDate: '2026-08-20' });
     expect(matrixCell([run(4, '2026-08-20', true, true), run(8, '2026-08-20', true, true)]).latestRunId).toBe(8);
   });
 });
 
 describe('gapScore / compareMatrixRows', () => {
-  const cell = (state: MatrixCell['state']): MatrixCell => ({ state, n: 1, recommended: 0, mentioned: 0, label: '', latestRunId: 1 });
+  const cell = (state: MatrixCell['state']): MatrixCell => ({ state, n: 1, recommended: 0, mentioned: 0, label: '', latestRunId: 1, latestDate: '2026-08-01' });
 
   it('counts not mentioned × 2 + mentioned only × 1; other states score nothing', () => {
     expect(gapScore([cell('not_mentioned'), cell('mentioned_only'), cell('recommended'), cell('partly'), cell('not_tracked')])).toBe(3);
@@ -93,10 +93,17 @@ describe('buildMatrix on questions.json', () => {
   it('every cell points at a real run of that question on that platform', () => {
     for (const row of m.rows) {
       row.cells.forEach((c, i) => {
-        if (c.latestRunId === null) return;
+        if (c.latestRunId === null) {
+          expect(c.latestDate).toBeNull();
+          return;
+        }
         const q = all.find((x) => x.id === c.latestRunId)!;
         expect(q.question).toBe(row.question);
         expect(q.platform).toBe(PLATFORMS[i]);
+        // latestDate is that run's date, and no run of the cell is later (for the "Latest run <Mon D>" tooltip)
+        expect(c.latestDate).toBe(q.date);
+        const runs = all.filter((x) => x.question === row.question && x.platform === PLATFORMS[i]);
+        expect(runs.every((x) => x.date <= q.date)).toBe(true);
       });
     }
   });

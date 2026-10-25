@@ -56,15 +56,16 @@
 - **证据数字带单位（C2）。** `EvidenceDatum = { label, value: number, unit: 'pct'|'pt'|'count', of? }`。前端按 `unit` 格式化，后端不往字符串里拼数字；verify 也按同一套单位比对。
 - **摘要（I2–I4）。** 前端只看 `mode`（`'rules' | 'ai' | 'mock'`）选徽标，不比对模型 ID；`model` 只用来显示。`verification = { verified, total, band }`，分档规则只在 `verificationOf` 里：total=0 或全部核实记 `all`，核实率 < 50% 记 `low`（挂 low-verification 徽标），其余记 `partial`。不管哪一档，未核实的数字都按 `numbers[i].start/end` 在原文里标红。
 - **行动卡排序（I5）。** 先按 severity，再按 `affectedQuestions` 降序，再按 `RULE_IDS` 的顺序；直接用 `compareActionCards`，不要自己写排序。
-- **趋势空点（I6）。** 某天没有问题时 `dailyVisibility` 为 null（不画这个点）；窗口不满 7 天或窗口里没有问题时 `rollingVisibility` 为 null。`dailyN` 等于 4 只在不加筛选时成立。
+- **趋势空点（I6）。** 某天没有问题时 `dailyVisibility` 为 null（不画这个点）；窗口不满 7 天或窗口里没有问题时 `rollingVisibility` 为 null。`dailyN` 等于 4 只在不加筛选时成立。T-FIX 起每个点还带分子分母 `dailyMentions/dailyQuestions`、`rollingMentions/rollingQuestions`（都是 number，没数据时为 0），tooltip 用它们写 `Aug 4 · 4/4 mentioned (n=4)` 和 `7-day: 22/28 (79%)`；`dailyQuestions === dailyN`、`rollingQuestions === rollingN`。
+- **矩阵格的最新日期与五态规则（T-FIX）。** `MatrixCell.latestDate` 是最新一次运行的日期（Not tracked 时为 null），tooltip 写 `Latest run <Mon D>`。五态判定只有一份实现：`matrixCellLook(n, recommended, mentioned)`（schema.ts，经 `types.ts` 导出），后端矩阵和详情页复刻格都调用它。
+- **降级原因（T-FIX）。** `LlmSummaryResult.reason` 多了 `'unknown_provider'`：`LLM_PROVIDER` 写成未知值时报它，不再报 `no_api_key`。
 - **意图层顺序。** `SummaryV3DTO.intents` 固定 4 行，按 `INTENT_DISPLAY_ORDER`（C → B → A → S）排列；ⓘ 文案用 `INTENT_TIERS_DISCLAIMER`。
 - **真值。** 单测里的期望数字只从 `__fixtures__/truth.ts` import。`TRUTH_TOP_DOMAINS` 最后两个并列 7 条，顺序没有定义，不要断言它们的相对顺序。
 
 ## 6. 收尾自检（每个任务都要跑）
 
 ```bash
-pnpm --dir <worktree> typecheck
-pnpm --dir <worktree>/backend exec tsc --noEmit -p .   # 后端类型和 contract.test.ts 的签名断言；根目录 typecheck 不覆盖后端
+pnpm --dir <worktree> typecheck   # T-FIX 起同时检查 frontend 和 backend（含 contract.test.ts 的签名断言）
 pnpm --dir <worktree> test
 pnpm --dir <worktree> lint
 ```

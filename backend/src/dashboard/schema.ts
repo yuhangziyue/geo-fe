@@ -292,6 +292,20 @@ export interface MatrixCell {
   label: string;
   /** latest run, for the click-through to detail; null when not_tracked */
   latestRunId: number | null;
+  /** YYYY-MM-DD of that latest run, for the tooltip "Latest run <Mon D>"; null when not_tracked */
+  latestDate: string | null;
+}
+/**
+ * The five-state rule of one cell (05 §2.3) from its counts — the ONE implementation: the backend matrix
+ * (aggregations/matrix.ts) and the detail page's replica (frontend detail/coverage.ts) both call it.
+ * all runs recommended → "r/n" · some → "r/n" partly · none but mentioned → "M" · never mentioned → "✕" · no run → "—".
+ */
+export function matrixCellLook(n: number, recommended: number, mentioned: number): Pick<MatrixCell, 'state' | 'label'> {
+  if (n === 0) return { state: 'not_tracked', label: '—' };
+  if (recommended === n) return { state: 'recommended', label: `${recommended}/${n}` };
+  if (recommended > 0) return { state: 'partly', label: `${recommended}/${n}` };
+  if (mentioned > 0) return { state: 'mentioned_only', label: 'M' };
+  return { state: 'not_mentioned', label: '✕' };
 }
 export interface MatrixRow {
   question: string;
@@ -344,10 +358,18 @@ export interface TrendPoint {
   dailyVisibility: number | null;
   /** questions that day (4 on the unfiltered data, can be 0 under a filter) */
   dailyN: number;
+  /** numerator / denominator of dailyVisibility, for "Aug 4 · 4/4 mentioned (n=4)" (05 §2.5); 0 on an empty day.
+   *  dailyQuestions === dailyN (dailyN is kept for existing readers). */
+  dailyMentions: number;
+  dailyQuestions: number;
   /** 7-day window ending this day; null for the first 6 days (window not full) and when the window has 0 questions */
   rollingVisibility: number | null;
   /** questions in the window (28 when full and unfiltered) */
   rollingN: number;
+  /** numerator / denominator of the window, for "7-day: 22/28 (79%)"; counted even while the window is not full
+   *  (rollingVisibility is still null then); 0 for an empty window. rollingQuestions === rollingN. */
+  rollingMentions: number;
+  rollingQuestions: number;
 }
 
 export interface IntentRow {
@@ -585,8 +607,8 @@ export interface LlmSummaryResult {
   verification: Verification;
   /** model id for display in 'ai' mode; the mock's id in 'mock' mode; null in 'rules' mode. Never compare it. */
   model: string | null;
-  /** why an 'ai' request fell back to 'rules'; null otherwise */
-  reason?: 'no_api_key' | 'timeout' | 'upstream_error' | null;
+  /** why an 'ai' request fell back to 'rules'; null otherwise. unknown_provider = LLM_PROVIDER names no known provider */
+  reason?: 'no_api_key' | 'unknown_provider' | 'timeout' | 'upstream_error' | null;
 }
 
 /** GET /api/dashboard/action-center/cards?platform&topic&intent — loaded with the page. */

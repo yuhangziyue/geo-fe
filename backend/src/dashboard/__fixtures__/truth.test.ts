@@ -100,6 +100,10 @@ describe('truth table matches questions.json', () => {
       const rows = all.filter((q) => q.date >= w.from && q.date <= w.date);
       expect({ ...w, n: rows.length, mentions: count(rows, mentioned), pct: pct(count(rows, mentioned), rows.length) }).toEqual(w);
     }
+    for (const d of TRUTH_TREND.daily) {
+      const rows = all.filter((q) => q.date === d.date);
+      expect({ ...d, n: rows.length, mentions: count(rows, mentioned), pct: pct(count(rows, mentioned), rows.length) }).toEqual(d);
+    }
   });
 
   it('intent tiers', () => {

@@ -16,6 +16,7 @@ import type {
   GlobalFilter,
   LlmFacts,
   LlmSummaryResult,
+  MatrixCell,
   MatrixDTO,
   NumberUnit,
   PeriodHalves,
@@ -33,6 +34,8 @@ import type {
  * The T0 handshake between B1 / B2 / F1 / F2. The type assertions are checked by
  * `pnpm --dir <wt>/backend exec tsc --noEmit -p .` (vitest itself does not type-check): if anyone changes a
  * signature below, that command goes red. Owner: T0. Changing a signature = stop and report NEEDS_CONTEXT.
+ * T-FIX (controller ruling) added: MatrixCell.latestDate, TrendPoint.{daily,rolling}{Mentions,Questions},
+ * LlmSummaryResult.reason 'unknown_provider'.
  */
 describe('T0 signatures', () => {
   it('insight.ts: buildActions / factsForLlm', () => {
@@ -90,6 +93,18 @@ describe('T0 signatures', () => {
     expectTypeOf<FunnelKpi['questions']>().toEqualTypeOf<{ value: number }>();
     expectTypeOf<LlmFacts['funnel']>().toHaveProperty('recommendRateOfAsked').toEqualTypeOf<number>();
     expectTypeOf<PlatformRow['name']>().toEqualTypeOf<Platform>();
+  });
+
+  it('T-FIX shapes: matrix latest date, trend numerators, unknown_provider reason', () => {
+    // MatrixCell: date of the latest run, for the "Latest run <Mon D>" tooltip; null when not_tracked.
+    expectTypeOf<MatrixCell['latestDate']>().toEqualTypeOf<string | null>();
+    // TrendPoint: the numerators behind "Aug 4 · 4/4 mentioned (n=4)" and "7-day: 22/28 (79%)"; 0 when empty.
+    expectTypeOf<TrendPoint['dailyMentions']>().toEqualTypeOf<number>();
+    expectTypeOf<TrendPoint['dailyQuestions']>().toEqualTypeOf<number>();
+    expectTypeOf<TrendPoint['rollingMentions']>().toEqualTypeOf<number>();
+    expectTypeOf<TrendPoint['rollingQuestions']>().toEqualTypeOf<number>();
+    // An unknown LLM_PROVIDER is its own reason, not no_api_key.
+    expectTypeOf<LlmSummaryResult['reason']>().toEqualTypeOf<'no_api_key' | 'unknown_provider' | 'timeout' | 'upstream_error' | null | undefined>();
   });
 
   it('TopicScenarioMap accepts an empty Map (mapping file deleted)', () => {

@@ -72,6 +72,14 @@ export const TRUTH_TREND = {
     { date: '2026-08-07', from: '2026-08-01', n: 28, mentions: 22, pct: 79 },
     { date: '2026-08-30', from: '2026-08-24', n: 28, mentions: 20, pct: 71 },
   ],
+  /**
+   * Single days, for the numerators behind the tooltip "Aug 4 · 4/4 mentioned (n=4)" (05 §2.5). T-FIX, computed
+   * from questions.json by counting brand_mentioned per date; truth.test.ts recomputes them.
+   */
+  daily: [
+    { date: '2026-08-04', n: 4, mentions: 4, pct: 100 },
+    { date: '2026-08-09', n: 4, mentions: 1, pct: 25 },
+  ],
 } as const;
 
 export interface IntentTruth {

@@ -88,12 +88,21 @@ describe('dispatchSummary', () => {
     expect(buildTemplate).toHaveBeenCalledWith(facts, 'timeout');
   });
 
-  it("'ai' + unknown LLM_PROVIDER → template, reason no_api_key", async () => {
+  it("'ai' + unknown LLM_PROVIDER → template, reason unknown_provider (not no_api_key: the key may well be set)", async () => {
     vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test');
     vi.stubEnv('LLM_PROVIDER', 'openai');
     const r = await dispatchSummary('ai', facts);
-    expect(r).toMatchObject({ mode: 'rules', reason: 'no_api_key' });
+    expect(r).toMatchObject({ mode: 'rules', reason: 'unknown_provider' });
+    expect(buildTemplate).toHaveBeenCalledWith(facts, 'unknown_provider');
     expect(claudeSummarize).not.toHaveBeenCalled();
+    expect(mockSummarize).not.toHaveBeenCalled();
+  });
+
+  it("'ai' + unknown LLM_PROVIDER and no key → still unknown_provider (the provider is the first thing wrong)", async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('LLM_PROVIDER', 'Mock ');
+    const r = await dispatchSummary('ai', facts);
+    expect(r).toMatchObject({ mode: 'rules', reason: 'unknown_provider' });
   });
 
   it('never throws: a failing mock provider also falls back', async () => {

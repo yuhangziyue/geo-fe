@@ -13,18 +13,26 @@ import { verificationOf, type ExtractedNumber, type LlmFacts, type LlmSummaryRes
  */
 
 /**
- * A number not glued to a word or another number ("Nova X8", "H2O" are skipped), optionally followed by "%"
- * (pct) or "pt" (pt; not "points"). Brief §5 regex, tightened so a count never swallows a trailing space.
+ * One number in a summary (T-FIX widened B2's regex; verify.test.ts has a case for each rule):
+ *   - not glued to a letter, digit, "." or "%" BEFORE it: version / model names ("v1.2", "Nova X8", "H2O") are skipped,
+ *     and a "-" right after a "%" is a range separator ("77%-65%" → 77%, 65%), not the sign of the next number;
+ *   - integer part may carry thousands separators ("1,200" → 1200; "7, 71" and "7,71" stay two numbers);
+ *   - unit: "%" (pct); "pt" / "pts" / "pp", spaced or glued (pt; not "points"); otherwise count;
+ *   - letters glued AFTER it ("3x", "12k") still make it a number the summary states → extracted as a count, so a
+ *     made-up "3x" is checked (and goes red) instead of silently skipped. Ordinals ("1st", "2nd") are ranks, skipped.
+ * Groups: 1 = number, 2 = "%", 3 = pt unit, 4 = glued letters.
  */
-const NUMBER_RE = /(?<![A-Za-z_\d.])(-?\d+(?:\.\d+)?)(?:\s?(%)|\s*(pt)(?![A-Za-z_]))?(?![A-Za-z_\d])/g;
+const NUMBER_RE = /(?<![A-Za-z_\d.%])(-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)(?:\s?(%)|\s*(pp|pts?)(?![A-Za-z_])|([A-Za-z]+))?(?![A-Za-z_\d])/g;
+const ORDINAL = /^(st|nd|rd|th)$/i;
 
 export function extractNumbers(text: string): ExtractedNumber[] {
   const out: ExtractedNumber[] = [];
   for (const m of text.matchAll(NUMBER_RE)) {
+    if (m[4] && ORDINAL.test(m[4])) continue;
     const start = m.index ?? 0;
     const end = start + m[0].length;
     const unit: NumberUnit = m[2] ? 'pct' : m[3] ? 'pt' : 'count';
-    out.push({ raw: text.slice(start, end), value: Number(m[1]), unit, start, end });
+    out.push({ raw: text.slice(start, end), value: Number(m[1].replace(/,/g, '')), unit, start, end });
   }
   return out;
 }

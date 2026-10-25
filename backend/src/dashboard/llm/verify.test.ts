@@ -32,6 +32,68 @@ describe('extractNumbers', () => {
     expect(extractNumbers('12 points')[0]).toMatchObject({ value: 12, unit: 'count' });
   });
 
+  // T-FIX ① (B2 review minor 1): a number glued to the letters AFTER it is still a number the summary states.
+  it('reads numbers glued to a unit or word after them: "12pp" / "12pts" are pt, "3x" is a count', () => {
+    const text = 'Visibility fell 12pp (12pts) and DeepSeek trails 3x.';
+    const nums = extractNumbers(text);
+    expect(nums.map(({ raw, value, unit }) => ({ raw, value, unit }))).toEqual([
+      { raw: '12pp', value: 12, unit: 'pt' },
+      { raw: '12pts', value: 12, unit: 'pt' },
+      { raw: '3x', value: 3, unit: 'count' },
+    ]);
+    for (const n of nums) expect(text.slice(n.start, n.end)).toBe(n.raw);
+  });
+
+  it('glued numbers take part in the check: a made-up "3x" is red, "12pp" verifies against the −12 pt delta', () => {
+    const r = verifyAgainstFacts(extractNumbers(`down ${Math.abs(TRUTH_PERIOD.deltaPt)}pp, ${TRUTH_FUNNEL.questions + 1}x more`), facts);
+    expect(r.numbers.map((n) => [n.raw, n.verified])).toEqual([
+      [`${Math.abs(TRUTH_PERIOD.deltaPt)}pp`, true],
+      [`${TRUTH_FUNNEL.questions + 1}x`, false],
+    ]);
+  });
+
+  it('still skips numbers glued to the letters BEFORE them — version / model names ("v1.2", "Nova X8") and ordinals ("1st", "2nd")', () => {
+    // A version or a product name is not a claim about the data; an ordinal is a rank, not a measured value.
+    expect(extractNumbers('Model v1.2 on Nova X8, ranked 1st and 2nd.')).toEqual([]);
+  });
+
+  // T-FIX ② (B2 review minor 2): a hyphen right after a % is a range separator, not a minus sign.
+  it.each([
+    ['77%-65%', 'hyphen'],
+    ['77%–65%', 'en dash'],
+    ['77% → 65%', 'arrow'],
+    ['77% - 65%', 'spaced hyphen'],
+  ])('"%s" (%s) reads 77% then 65%, not −65%', (range) => {
+    expect(extractNumbers(`from ${range} visibility`).map(({ value, unit }) => ({ value, unit }))).toEqual([
+      { value: 77, unit: 'pct' },
+      { value: 65, unit: 'pct' },
+    ]);
+  });
+
+  it('a range of the true halves verifies both ends', () => {
+    const text = `Visibility went from ${TRUTH_PERIOD.first.pct}%-${TRUTH_PERIOD.last.pct}%.`;
+    expect(verifyAgainstFacts(extractNumbers(text), facts).verification).toEqual({ verified: 2, total: 2, band: 'all' });
+  });
+
+  it('a leading minus is still a sign: "-12 pt" and "(-12 pt)"', () => {
+    expect(extractNumbers('a -12 pt drop (-12 pt)').map((n) => n.value)).toEqual([-12, -12]);
+  });
+
+  // T-FIX ③ (B2 review minor 3): thousands separators.
+  it('"1,200" is 1200, not 1 and 200; a list "7, 71" stays two numbers', () => {
+    const text = 'Across 1,200 runs and 12,345,678 tokens; 7, 71 and 7,71.';
+    const nums = extractNumbers(text);
+    expect(nums.map(({ raw, value }) => ({ raw, value }))).toEqual([
+      { raw: '1,200', value: 1200 },
+      { raw: '12,345,678', value: 12345678 },
+      { raw: '7', value: 7 },
+      { raw: '71', value: 71 },
+      { raw: '7', value: 7 },
+      { raw: '71', value: 71 },
+    ]);
+    for (const n of nums) expect(text.slice(n.start, n.end)).toBe(n.raw);
+  });
+
   it('returns [] for text without numbers', () => {
     expect(extractNumbers('No numbers here.')).toEqual([]);
   });

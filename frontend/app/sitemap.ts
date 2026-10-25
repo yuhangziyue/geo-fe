@@ -1,9 +1,10 @@
 import type { MetadataRoute } from 'next';
 import { listProducts, listScenarios } from '@geo/backend/knowledge/repo';
+import { siteUrl } from '@geo/backend/shared/site';
 
 // Only public Knowledge Center pages; dashboard, admin and API stay out.
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = (process.env.SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+  const base = siteUrl();
   return [
     { url: `${base}/products`, changeFrequency: 'weekly', priority: 1 },
     ...listProducts({}).map((p) => ({ url: `${base}/products/${p.slug}`, changeFrequency: 'monthly' as const, priority: 0.8 })),

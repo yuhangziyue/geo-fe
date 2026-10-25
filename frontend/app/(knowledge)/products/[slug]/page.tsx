@@ -5,8 +5,9 @@ import { buildJsonLd } from '@geo/backend/knowledge/jsonld';
 import { getBrand, getProduct, listProducts } from '@geo/backend/knowledge/repo';
 import { AskPanel } from '@/components/knowledge/AskPanel';
 import { StatusBadge, showResolution } from '@/components/knowledge/StatusBadge';
+import { siteUrl } from '@geo/backend/shared/site';
 
-const SITE_URL = process.env.SITE_URL ?? 'http://localhost:3000';
+const SITE_URL = siteUrl();
 
 type Props = { params: Promise<{ slug: string }> };
 

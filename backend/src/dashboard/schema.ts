@@ -6,8 +6,6 @@ export const PLATFORMS = ['ChatGPT', 'Gemini', 'Claude', 'Perplexity', 'DeepSeek
  * purchase-funnel convention (see INTENT_LABELS) and never re-labels a question.
  */
 export const INTENTS = ['S', 'A', 'B', 'C'] as const;
-/** @deprecated e2 name, same tuple — use INTENTS. */
-export const DOCUMENTED_INTENTS = INTENTS;
 export const OWNED_DOMAIN = 'astervision.example';
 
 export const CitationSchema = z.object({
@@ -60,25 +58,6 @@ export const SummaryFilterSchema = z.object({
 });
 export type SummaryFilter = z.infer<typeof SummaryFilterSchema>;
 
-export const QuestionQuerySchema = z.object({
-  platform: z.enum(PLATFORMS).optional(),
-  topic: z.string().min(1).optional(),
-  intent: z.string().min(1).optional(),
-  mentioned: bool.optional(),
-  recommended: bool.optional(),
-  q: z.string().trim().max(200).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
-});
-export type QuestionQuery = z.infer<typeof QuestionQuerySchema>;
-
-/** @deprecated v2 body of POST /api/dashboard/insight — removed by B1 together with that route. */
-export const InsightBodySchema = z.object({
-  platform: z.enum(PLATFORMS).optional(),
-  topic: z.string().min(1).optional(),
-  intent: z.string().min(1).optional(),
-});
-
 export interface MetricRow {
   visibility: number;
   mentions: number;
@@ -112,30 +91,6 @@ export interface PromptToFix {
   runs: number;
 }
 
-export interface SummaryDTO {
-  brand: string;
-  period: string;
-  kpi: MetricRow;
-  prompts: PromptCoverage;
-  platforms: Array<MetricRow & { name: string }>;
-  trend: Array<{ date: string; visibility: number; mentions: number; recommendations: number }>;
-  /** `scenario`: the Knowledge Center page where this topic's content lives (hand-curated, may be null). */
-  topics: Array<{ topic: string; questions: number; visibility: number; recommendations: number; scenario: ScenarioRef | null }>;
-  intents: Array<{ intent: string; questions: number; visibility: number; recommendations: number }>;
-  /** Documented intent types with no question in this selection. */
-  missingIntents: string[];
-  worstQuestions: PromptToFix[];
-}
-
-export interface Insight {
-  id: string;
-  title: string;
-  detail: string;
-  evidenceHref: string;
-  /** Where to act on the finding, e.g. the Knowledge Center page to improve. */
-  action?: { label: string; href: string };
-}
-
 // Response bodies of /api/dashboard/*. The frontend imports these types instead of keeping a copy.
 
 /** Every filter value present in the data, so the UI never hard-codes platforms or topics. */
@@ -145,33 +100,12 @@ export interface Facets {
   intents: string[];
 }
 
-/** @deprecated v2 body of GET /api/dashboard/summary — replaced by SummaryV3Response; removed by B1. */
-export type SummaryResponse = SummaryDTO & { facets: Facets };
-
 export interface QuestionPageResponse {
   items: Question[];
   total: number;
   page: number;
   pageSize: number;
   facets: Facets;
-}
-
-export interface QuestionDetailResponse {
-  /** null only under ?simulate=empty. */
-  question: Question | null;
-  /** Other runs of the same prompt (other platforms, or the same platform on another day). */
-  otherRuns: Array<{ id: number; platform: Platform; date: string; mentioned: boolean; recommended: boolean }>;
-  analysis: {
-    topicScenario: ScenarioRef | null;
-    citationDomains: Array<{ domain: string; count: number; owned: boolean }>;
-    ownedCitations: number;
-    products: Array<{ name: string; slug: string | null }>;
-  };
-}
-
-/** @deprecated v2 body of POST /api/dashboard/insight — replaced by ActionCardsResponse; removed by B1. */
-export interface InsightResponse {
-  insights: Insight[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────

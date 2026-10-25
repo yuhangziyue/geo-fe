@@ -3,15 +3,7 @@
 // (and useGlobalFilter's URL helpers) DO ship schema.ts to the browser, zod included — accepted: zod is already a
 // frontend dependency and this keeps one definition of each constant.
 
-// e2 (v2) shapes, kept only while the old components exist. F1/F2 delete those components; T-END removes these.
-export type {
-  Insight,
-  MetricRow as Kpi,
-  QuestionDetailResponse as QuestionDetail,
-  SummaryResponse as SummaryV2,
-} from '@geo/backend/dashboard/schema';
-
-// Shared by v2 and v3.
+// Shared with e2 (unchanged list / question shapes).
 export type { Citation, Facets, Platform, Question, QuestionPageResponse as QuestionPage } from '@geo/backend/dashboard/schema';
 
 // v3 contract.

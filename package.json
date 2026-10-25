@@ -11,7 +11,7 @@
     "build": "pnpm seed && pnpm --filter frontend build",
     "demo": "pnpm build && pnpm --filter frontend start",
     "test": "pnpm --filter @geo/backend test",
-    "typecheck": "pnpm --filter frontend exec tsc --noEmit",
+    "typecheck": "pnpm --filter frontend exec tsc --noEmit && pnpm --filter @geo/backend exec tsc --noEmit -p .",
     "lint": "pnpm --filter frontend lint",
     "e2e": "playwright test"
   },

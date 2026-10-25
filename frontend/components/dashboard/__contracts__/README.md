@@ -20,7 +20,7 @@
 `PLATFORMS`、`OWNED_DOMAIN`、`QuestionSchema` 及其 `superRefine` 业务规则、`Question.prompt_id`、`pct()`（整数五成双）、
 `applyFilter` / `metricRow` / `badness` / `promptCoverage` / `promptsToFix`、`isOwnedUrl`、RFC 9457 `problem()`、
 `?simulate=slow|error|empty`（`shared/simulate.ts`）、facets 取自全量数据而不是筛选结果。
-`SummaryResponse` / `InsightBodySchema` / `InsightResponse` 已标 `@deprecated`，由 B1 随旧接口一起删除。
+v2 的弃用类型（`SummaryDTO` / `SummaryResponse`(=SummaryV2) / `Insight` / `InsightResponse` / `InsightBodySchema` / `QuestionDetailResponse` / `QuestionQuerySchema` / `DOCUMENTED_INTENTS`）已在 T-FIX 删除。
 
 ## 3. 每个并行任务能依赖什么、不能依赖什么
 

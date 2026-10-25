@@ -9,10 +9,10 @@ export default function DashboardError({ error, reset }: { error: Error & { dige
   }, [error]);
 
   return (
-    <div role="alert" className="mx-auto max-w-md rounded-xl border border-rose-200 bg-rose-50 p-8 text-center">
-      <h1 className="text-lg font-semibold text-rose-900">This view crashed</h1>
-      <p className="mt-2 text-sm text-rose-700">{error.message || 'Unexpected error.'}</p>
-      <button type="button" onClick={reset} className="mt-4 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-100">
+    <div role="alert" className="mx-auto max-w-md rounded-xl border border-line bg-danger-subtle p-8 text-center">
+      <h1 className="text-lg font-semibold text-danger">This view crashed</h1>
+      <p className="mt-2 text-sm text-danger">{error.message || 'Unexpected error.'}</p>
+      <button type="button" onClick={reset} className="mt-4 rounded-md border border-line-strong bg-surface-card px-3 py-1.5 text-sm font-medium text-danger hover:bg-danger-subtle">
         Try again
       </button>
     </div>

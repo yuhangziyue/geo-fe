@@ -34,7 +34,7 @@ export function EChart({ option, height = 300, onClick, ariaLabel, table }: Prop
     const observer = new ResizeObserver(() => chart.current?.resize());
     import('./echarts').then((echarts) => {
       if (disposed || !el.current) return;
-      chart.current = echarts.init(el.current) as unknown as ECharts;
+      chart.current = echarts.init(el.current, 'geo') as unknown as ECharts;
       // Latest option, in case it changed while echarts was loading.
       chart.current.setOption(optionRef.current);
       chart.current.on('click', (p) =>
@@ -59,25 +59,25 @@ export function EChart({ option, height = 300, onClick, ariaLabel, table }: Prop
       <div ref={el} role="img" aria-label={ariaLabel} aria-describedby={table ? tableId : undefined} style={{ height, width: '100%' }} />
       {table && (
         <details className="mt-2 text-sm">
-          <summary className="cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-800">Show data table</summary>
+          <summary className="cursor-pointer text-xs font-medium text-ink-tertiary hover:text-ink">Show data table</summary>
           <div className="mt-2 overflow-x-auto">
             <table id={tableId} className="w-full text-left text-xs">
               <caption className="sr-only">{table.caption}</caption>
-              <thead className="border-b border-slate-200 text-slate-500">
+              <thead className="border-b border-line text-ink-tertiary">
                 <tr>
                   {table.columns.map((c, i) => (
                     <th key={c} scope="col" className={`py-1.5 pr-3 font-medium ${i > 0 ? 'text-right' : ''}`}>{c}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 tabular-nums">
+              <tbody className="divide-y divide-surface-sunken tabular-nums">
                 {table.rows.map((r) => (
                   <tr key={String(r[0])}>
                     {r.map((cell, i) =>
                       i === 0 ? (
-                        <th key={i} scope="row" className="py-1.5 pr-3 font-normal text-slate-700">{cell}</th>
+                        <th key={i} scope="row" className="py-1.5 pr-3 font-normal text-ink-secondary">{cell}</th>
                       ) : (
-                        <td key={i} className="py-1.5 pr-3 text-right text-slate-600">{cell}</td>
+                        <td key={i} className="py-1.5 pr-3 text-right text-ink-secondary">{cell}</td>
                       ),
                     )}
                   </tr>

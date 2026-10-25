@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { QuestionDetailV3 } from '../types';
 import { runCellOf } from './coverage';
-import { CoverageSwatch } from './marks';
+import { CoverageSwatch } from '../shared/marks';
 
 type Run = QuestionDetailV3['crossPlatform'][number];
 

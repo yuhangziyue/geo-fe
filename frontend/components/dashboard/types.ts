@@ -53,12 +53,13 @@ export type {
   VerifiedNumber,
 } from '@geo/backend/dashboard/schema';
 
-// ⓘ texts and the fixed vocabularies — one definition, shared with the backend.
+// ⓘ texts, the fixed vocabularies and the matrix five-state rule — one definition, shared with the backend.
 export {
   INTENT_DISPLAY_ORDER,
   INTENT_LABELS,
   INTENT_TIERS_DISCLAIMER,
   INTENTS,
+  matrixCellLook,
   OWNED_DOMAIN_DISCLAIMER,
   PLATFORMS,
   SOURCE_TYPE_NOTE,

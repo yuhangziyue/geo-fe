@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ActionTarget, Diagnosis } from '../types';
 import type { CellLook } from './coverage';
-import { CoverageSwatch } from './marks';
+import { CoverageSwatch } from '../shared/marks';
 
 /** 05 §2.8 add-on line, driven by question.sentiment (not by matching the backend's wording). */
 export const MIXED_TONE = 'Answer tone is mixed';

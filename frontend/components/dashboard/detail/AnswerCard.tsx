@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { OWNED_DOMAIN_DISCLAIMER, type Question, type QuestionDetailV3 } from '../types';
-import { InfoTip } from './marks';
+import { InfoTip } from '../shared/InfoTip';
 
 const BRAND = 'AsterVision';
 

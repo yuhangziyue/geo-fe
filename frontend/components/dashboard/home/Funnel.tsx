@@ -6,7 +6,7 @@ import { series } from '../../../design/chartTheme';
 import { AsyncState } from '../AsyncState';
 import { OWNED_DOMAIN_DISCLAIMER, type FunnelKpi } from '../types';
 import { useGlobalFilter } from '../useGlobalFilter';
-import { InfoTip } from './InfoTip';
+import { InfoTip } from '../shared/InfoTip';
 import { asyncProps, ClearFilters, Delta, type SummaryApi } from './shared';
 
 /**

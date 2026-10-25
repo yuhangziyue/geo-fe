@@ -5,8 +5,9 @@ import { series } from '../../../design/chartTheme';
 import { AsyncState, Card } from '../AsyncState';
 import { INTENT_TIERS_DISCLAIMER, type IntentRow } from '../types';
 import { useGlobalFilter } from '../useGlobalFilter';
-import { InfoTip } from './InfoTip';
-import { asyncProps, ClearFilters, INTENT_BADGE_CLASS, type SummaryApi } from './shared';
+import { InfoTip } from '../shared/InfoTip';
+import { IntentBadge } from '../shared/marks';
+import { asyncProps, ClearFilters, type SummaryApi } from './shared';
 
 /**
  * ⑤-right Intent tiers (05 §2.6, 06 §5.5): four columns C → B → A → S in the backend's order
@@ -59,9 +60,7 @@ export function Intents({ api }: { api: SummaryApi }) {
 function TierHead({ t }: { t: IntentRow }) {
   return (
     <span className="flex items-center gap-2">
-      <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-xs font-semibold ${INTENT_BADGE_CLASS[t.tier]}`}>
-        {t.tier}
-      </span>
+      <IntentBadge intent={t.tier} decorative />
       <span className="truncate text-sm font-medium text-ink">{t.label}</span>
     </span>
   );

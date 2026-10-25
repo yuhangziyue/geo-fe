@@ -3,31 +3,16 @@
 import Link from 'next/link';
 import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
 import { AsyncState, Card } from '../AsyncState';
-import { INTENT_LABELS, type IntentTier, type MatrixCell, type MatrixDTO, type MatrixRow, type MatrixState, type Platform } from '../types';
+import { CELL_CLASS, CELL_STATE_NAME, IntentBadge } from '../shared/marks';
+import type { MatrixCell, MatrixDTO, MatrixRow, MatrixState, Platform } from '../types';
 import { useGlobalFilter } from '../useGlobalFilter';
-import { asyncProps, ClearFilters, formatDay, INTENT_BADGE_CLASS, PLATFORM_ABBR, type SummaryApi } from './shared';
+import { asyncProps, ClearFilters, formatDay, PLATFORM_ABBR, type SummaryApi } from './shared';
 
 /** Rows shown before "Show all" (05 §2.3). */
 const TOP_ROWS = 12;
 
-/** Display names of the five states, in the legend's order (darkest = most present → hole → untracked). */
-const STATE_NAME: Record<MatrixState, string> = {
-  recommended: 'Recommended',
-  partly: 'Partly recommended',
-  mentioned_only: 'Mentioned only',
-  not_mentioned: 'Not mentioned',
-  not_tracked: 'Not tracked',
-};
+/** The legend's order (darkest = most present → hole → untracked). */
 const LEGEND_ORDER: readonly MatrixState[] = ['recommended', 'partly', 'mentioned_only', 'not_mentioned', 'not_tracked'];
-
-/** 06 §3.3: one hue, lighter = less AI presence; the hole is white with a dark 1.5px border; untracked is hatched. */
-const CELL_CLASS: Record<MatrixState, string> = {
-  recommended: 'bg-cov-rec text-cov-rec-ink',
-  partly: 'bg-cov-partly text-cov-partly-ink',
-  mentioned_only: 'border border-cov-mentioned-line bg-cov-mentioned text-cov-mentioned-ink',
-  not_mentioned: 'border-[1.5px] border-cov-none-line bg-cov-none text-cov-none-ink',
-  not_tracked: 'cov-untracked text-cov-untracked-ink',
-};
 
 /** Row template: header column + 5 platform columns (1440: 280+/56 · 1024: 220+/52 · <768: stacked, 5 × 1fr). */
 const ROW_GRID =
@@ -118,7 +103,7 @@ function Legend({ counts }: { counts: Record<MatrixState, number> }) {
         {LEGEND_ORDER.map((s) => (
           <li key={s} className="flex items-center gap-1.5">
             <span aria-hidden className={`inline-block h-3 w-4 rounded-md ${CELL_CLASS[s]}`} />
-            {STATE_NAME[s]} <span className="tabular-nums text-ink-tertiary">{counts[s]}</span>
+            {CELL_STATE_NAME[s]} <span className="tabular-nums text-ink-tertiary">{counts[s]}</span>
           </li>
         ))}
       </ul>
@@ -206,7 +191,7 @@ function Grid({ m, rows }: { m: MatrixDTO; rows: MatrixRow[] }) {
       {rows.map((row, r) => (
         <div key={row.question} role="row" aria-rowindex={r + 2} className={`${ROW_GRID} group/row border-b border-line py-2 last:border-b-0 md:py-1`}>
           <div role="rowheader" className="col-span-5 flex min-w-0 items-start gap-2 rounded-md px-1 py-0.5 transition-colors duration-[120ms] ease-out group-hover/row:bg-surface-sunken md:col-span-1">
-            <IntentBadge tier={row.intent} />
+            <IntentBadge intent={row.intent} className="mt-0.5" />
             <div className="min-w-0">
               <Link
                 href={buildHref('/dashboard/questions', { q: row.question })}
@@ -240,20 +225,6 @@ function Grid({ m, rows }: { m: MatrixDTO; rows: MatrixRow[] }) {
   );
 }
 
-function IntentBadge({ tier }: { tier: IntentTier | null }) {
-  if (!tier) return <span aria-hidden className="mt-0.5 inline-block h-5 w-5 shrink-0" />;
-  return (
-    <span
-      title={`Intent ${tier} · ${INTENT_LABELS[tier].name}`}
-      aria-label={`Intent ${tier}, ${INTENT_LABELS[tier].name}`}
-      role="img"
-      className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-xs font-semibold ${INTENT_BADGE_CLASS[tier]}`}
-    >
-      {tier}
-    </span>
-  );
-}
-
 function Cell(props: {
   cell: MatrixCell;
   platform: Platform;
@@ -264,7 +235,7 @@ function Cell(props: {
   register: (el: HTMLAnchorElement | null) => void;
 }) {
   const { cell, platform, alignRight, href, tabIndex, onFocus, register } = props;
-  const name = STATE_NAME[cell.state];
+  const name = CELL_STATE_NAME[cell.state];
   const isTracked = cell.state !== 'not_tracked' && href !== null;
   const latest = cell.latestDate ? `Latest run ${formatDay(cell.latestDate)}` : null;
   const ariaLabel = isTracked

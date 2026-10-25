@@ -1,7 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import type { IntentTier, Platform, Summary } from '../types';
+import type { Platform, Summary } from '../types';
 import type { ApiState } from '../useApi';
 import { useGlobalFilter } from '../useGlobalFilter';
 
@@ -12,14 +12,6 @@ export type SummaryApi = ApiState<Summary> & { retry: () => void };
 export function asyncProps(api: SummaryApi) {
   return { status: api.status, error: api.error, refreshing: api.refreshing, onRetry: api.retry };
 }
-
-/** 06 §3.4 intent badges (teal, ordered C → S). Literal class names so Tailwind generates them. */
-export const INTENT_BADGE_CLASS: Record<IntentTier, string> = {
-  C: 'bg-intent-c text-intent-c-ink ring-1 ring-intent-b',
-  B: 'bg-intent-b text-intent-b-ink',
-  A: 'bg-intent-a text-intent-a-ink',
-  S: 'bg-intent-s text-intent-s-ink',
-};
 
 /** 06 §7 column-header abbreviations for the matrix below xl (52px columns cannot fit the names) (full names stay in title / aria-label). */
 export const PLATFORM_ABBR: Record<Platform, string> = {

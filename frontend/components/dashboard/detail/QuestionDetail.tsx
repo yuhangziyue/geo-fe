@@ -11,7 +11,7 @@ import { AnswerCard } from './AnswerCard';
 import { cellOf } from './coverage';
 import { CrossPlatform } from './CrossPlatform';
 import { DiagnosisCard, DiagnosisSkeleton } from './Diagnosis';
-import { IntentBadge } from './marks';
+import { IntentBadge } from '../shared/marks';
 
 /** Question detail (05 §2.8): diagnosis card → this run's answer → every run side by side. */
 export function QuestionDetail({ id }: { id: string }) {

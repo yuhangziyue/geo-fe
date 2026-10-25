@@ -1,7 +1,7 @@
 import { isOwnedUrl } from '../insight';
 import { pct } from '../metrics';
 import type { FunnelKpi, PeriodHalves, Question } from '../schema';
-import { halfDelta } from './period';
+import { halfDelta, MIN_HALF_CITATIONS, MIN_HALF_MENTIONS } from './period';
 
 const count = (rows: Question[], p: (q: Question) => boolean) => rows.filter(p).length;
 const mentions = (rows: Question[]) => count(rows, (q) => q.brand_mentioned);
@@ -32,12 +32,12 @@ export function buildFunnel(rows: Question[], halves: PeriodHalves): FunnelKpi {
       rateOfPrevious: pct(r, m),
       deltaPt: halfDelta(rows, halves, rate.recommendationsOfAsked),
     },
-    sourceBacked: { cited: cited(rows), rateOfMentioned: rate.citedOfMentioned(rows), deltaPt: halfDelta(rows, halves, rate.citedOfMentioned) },
+    sourceBacked: { cited: cited(rows), rateOfMentioned: rate.citedOfMentioned(rows), deltaPt: halfDelta(rows, halves, rate.citedOfMentioned, { size: mentions, min: MIN_HALF_MENTIONS }) },
     ownedSource: {
       owned: ownedOf(rows),
       totalCitations: citationsOf(rows).length,
       shareOfCitations: rate.ownedOfCitations(rows),
-      deltaPt: halfDelta(rows, halves, rate.ownedOfCitations),
+      deltaPt: halfDelta(rows, halves, rate.ownedOfCitations, { size: (r) => citationsOf(r).length, min: MIN_HALF_CITATIONS }),
     },
   };
 }

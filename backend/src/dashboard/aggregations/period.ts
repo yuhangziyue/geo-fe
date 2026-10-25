@@ -3,6 +3,16 @@ import type { PeriodHalves, Question } from '../schema';
 
 /** Below this many questions in either half, a period delta is not shown ("Too few samples", 05 §1). */
 export const MIN_HALF_N = 8;
+/** Source-backed (÷ mentions) delta also needs this many mentions in each half (round-1 ruling M2). */
+export const MIN_HALF_MENTIONS = 8;
+/** Owned share (÷ citations) delta also needs this many citations in each half (round-1 ruling M2). */
+export const MIN_HALF_CITATIONS = 10;
+
+/** Extra per-half sample rule for a rate whose denominator is not the question count. */
+export interface HalfGate {
+  size: (rows: Question[]) => number;
+  min: number;
+}
 
 const DAY_MS = 86_400_000;
 const toDay = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
@@ -37,8 +47,19 @@ export const inHalf = (rows: Question[], h: { from: string; to: string }) => row
 /** Visibility = mentions ÷ questions, in pct. */
 export const visibilityOf = (rows: Question[]) => pct(rows.filter((q) => q.brand_mentioned).length, rows.length);
 
-/** metric(last half) − metric(first half) in pt; null when either half has fewer than MIN_HALF_N questions. */
-export function halfDelta(rows: Question[], halves: PeriodHalves, metric: (rows: Question[]) => number): number | null {
+/**
+ * metric(last half) − metric(first half) in pt; null ("Too few samples") when either half has fewer than
+ * MIN_HALF_N questions, or — with a gate — fewer than `gate.min` of the metric's own denominator.
+ */
+export function halfDelta(
+  rows: Question[],
+  halves: PeriodHalves,
+  metric: (rows: Question[]) => number,
+  gate?: HalfGate,
+): number | null {
   if (halves.first.n < MIN_HALF_N || halves.last.n < MIN_HALF_N) return null;
-  return metric(inHalf(rows, halves.last)) - metric(inHalf(rows, halves.first));
+  const first = inHalf(rows, halves.first);
+  const last = inHalf(rows, halves.last);
+  if (gate && (gate.size(first) < gate.min || gate.size(last) < gate.min)) return null;
+  return metric(last) - metric(first);
 }

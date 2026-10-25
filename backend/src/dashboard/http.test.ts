@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROOT_DIR } from '../shared/paths';
 import {
   TRUTH_ACTION_CARDS,
+  TRUTH_F3_F6,
   TRUTH_FUNNEL,
   TRUTH_INTENTS,
   TRUTH_OWNED_SHARE,
@@ -177,6 +178,15 @@ describe('GET /summary', () => {
   });
 });
 
+describe('KPI Asked = questions total under the same filter (05 §2.1)', () => {
+  it.each(['', 'platform=DeepSeek&intent=A', 'topic=Office%20Security'])('filter "%s"', async (qs) => {
+    const summary = await (await getSummary(get(`/api/dashboard/summary?${qs}`))).json();
+    const list = await (await listQuestions(get(`/api/dashboard/questions?${qs}`))).json();
+    expect(summary.funnel.questions.value).toBe(list.total);
+    expect(list.total).toBeGreaterThan(0);
+  });
+});
+
 describe('GET /questions', () => {
   it('filters by platform + mentioned and by intent', async () => {
     const deepseek = TRUTH_PLATFORMS.find((p) => p.name === 'DeepSeek')!;
@@ -245,9 +255,18 @@ describe('diagnose (05 §2.8) — first matching rule wins', () => {
     expect(diagnose(q({}), scenarios, slugs).extra).toBeUndefined();
   });
 
-  it('every question in the data gets exactly one of the four codes', () => {
-    const codes = new Set(all.map((x) => diagnose(x, loadTopicScenarios(), productSlugs()).code));
-    for (const c of codes) expect(['content_gap', 'persuasion_gap', 'source_gap', 'healthy']).toContain(c);
+  it('matches the F3/F6 distribution over the data: content 35 / persuasion 29 / source 51 / healthy 5', () => {
+    const counts: Record<string, number> = {};
+    for (const x of all) {
+      const code = diagnose(x, loadTopicScenarios(), productSlugs()).code;
+      counts[code] = (counts[code] ?? 0) + 1;
+    }
+    expect(counts).toEqual({
+      content_gap: TRUTH_F3_F6.notMentioned,
+      persuasion_gap: TRUTH_F3_F6.mentionedNotRecommended,
+      source_gap: TRUTH_F3_F6.recommendedWithoutOwned,
+      healthy: TRUTH_FUNNEL.recommendations.value - TRUTH_F3_F6.recommendedWithoutOwned,
+    });
   });
 });
 

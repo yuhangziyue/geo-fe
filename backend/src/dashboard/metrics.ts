@@ -1,13 +1,21 @@
-import { loadBrand, topicScenario } from './repo';
+import { buildFunnel } from './aggregations/funnel';
+import { intentRows } from './aggregations/intents';
+import { buildMatrix } from './aggregations/matrix';
+import { periodDays, periodHalves } from './aggregations/period';
+import { platformRows, worstFlags } from './aggregations/platforms';
+import { sourceStructure } from './aggregations/sources';
+import { buildTrend } from './aggregations/trend';
+import { loadBrand } from './repo';
 import {
-  DOCUMENTED_INTENTS,
   PLATFORMS,
+  type GlobalFilter,
   type MetricRow,
   type PromptCoverage,
   type PromptToFix,
   type Question,
-  type SummaryDTO,
   type SummaryFilter,
+  type SummaryV3DTO,
+  type TopicRow,
 } from './schema';
 
 /**
@@ -100,45 +108,40 @@ export function promptsToFix(rows: Question[], limit = 5): PromptToFix[] {
     .map((r) => r.item);
 }
 
-export function computeSummary(questions: Question[], filter: SummaryFilter): SummaryDTO {
+/** Topic visibility, topic name asc; the single lowest is flagged (05 §2.5 card, drives `weak-topic`). */
+export function topicRows(rows: Question[]): TopicRow[] {
+  const out = [...groupBy(rows, (q) => q.topic).entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([topic, qs]) => {
+      const m = metricRow(qs);
+      return { topic, questions: m.questions, visibility: m.visibility, recommendations: m.recommendations, isWorst: false };
+    });
+  const worst = worstFlags(out.map((t) => t.visibility));
+  return out.map((t, i) => ({ ...t, isWorst: worst[i] }));
+}
+
+/**
+ * GET /api/dashboard/summary body (v3). `questions` is the FULL data: the global filter is applied here, while the
+ * period axis (trend days, halves) and the matrix (which ignores `platform`, I7) are anchored on the full data.
+ */
+export function computeSummary(questions: Question[], filter: GlobalFilter): SummaryV3DTO {
   const rows = applyFilter(questions, filter);
   const { brand, period } = loadBrand();
   const dates = rows.map((q) => q.date).sort();
-
-  const byPlatform = groupBy(rows, (q) => q.platform);
-  const platforms = PLATFORMS.filter((p) => byPlatform.has(p)).map((name) => ({
-    name,
-    ...metricRow(byPlatform.get(name)!),
-  }));
-
-  const trend = [...groupBy(rows, (q) => q.date).entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, qs]) => {
-      const m = metricRow(qs);
-      return { date, visibility: m.visibility, mentions: m.mentions, recommendations: m.recommendations };
-    });
-
-  const topics = [...groupBy(rows, (q) => q.topic).entries()].map(([topic, qs]) => {
-    const m = metricRow(qs);
-    return { topic, questions: m.questions, visibility: m.visibility, recommendations: m.recommendations, scenario: topicScenario(topic) };
-  });
-
-  const byIntent = groupBy(rows, (q) => q.intent_type);
-  const intents = [...byIntent.keys()].sort().map((intent) => {
-    const m = metricRow(byIntent.get(intent)!);
-    return { intent, questions: m.questions, visibility: m.visibility, recommendations: m.recommendations };
-  });
+  const days = periodDays(questions);
+  const halves = periodHalves(rows, days);
 
   return {
     brand,
     period: dates.length ? `${dates[0]}~${dates[dates.length - 1]}` : period,
-    kpi: metricRow(rows),
-    prompts: promptCoverage(rows),
-    platforms,
-    trend,
-    topics,
-    intents,
-    missingIntents: DOCUMENTED_INTENTS.filter((i) => !byIntent.has(i)),
-    worstQuestions: promptsToFix(rows),
+    filter,
+    funnel: buildFunnel(rows, halves),
+    platforms: platformRows(rows),
+    trend: buildTrend(rows, days),
+    topics: topicRows(rows),
+    intents: intentRows(rows),
+    sources: sourceStructure(rows),
+    matrix: buildMatrix(questions, filter),
+    periodHalves: halves,
   };
 }

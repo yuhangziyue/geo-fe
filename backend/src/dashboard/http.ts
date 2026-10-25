@@ -1,18 +1,30 @@
 import { z } from 'zod';
 import { problem } from '../shared/problem';
 import { simulateMode, sleep } from '../shared/simulate';
-import { buildInsights, isOwnedUrl } from './insight';
+import { periodDays, periodHalves } from './aggregations/period';
+import { buildActions, factsForLlm, isOwnedUrl } from './insight';
+import { dispatchSummary } from './llm/dispatcher';
 import { applyFilter, computeSummary } from './metrics';
-import { loadBrand, loadFacets, loadQuestions, productSlugs, topicScenario } from './repo';
+import { loadBrand, loadFacets, loadQuestions, loadTopicScenarios, productSlugs } from './repo';
 import {
-  InsightBodySchema,
-  QuestionQuerySchema,
-  SummaryFilterSchema,
-  type InsightResponse,
+  GlobalFilterSchema,
+  PLATFORMS,
+  QuestionQueryV3Schema,
+  SummaryRequestSchema,
+  verificationOf,
+  type ActionCardsResponse,
+  type ActionTarget,
+  type Diagnosis,
+  type GlobalFilter,
+  type LlmFacts,
+  type LlmSummaryResult,
   type Question,
-  type QuestionDetailResponse,
+  type QuestionDetailV3,
+  type QuestionDetailV3Response,
   type QuestionPageResponse,
-  type SummaryResponse,
+  type SummaryV3DTO,
+  type SummaryV3Response,
+  type TopicScenarioMap,
 } from './schema';
 
 type Handler<C = unknown> = (req: Request, ctx?: C) => Promise<Response>;
@@ -49,23 +61,45 @@ function withSimulate<C>(empty: () => unknown, fn: Handler<C>): Handler<C> {
   };
 }
 
-export const getSummary = withSimulate(
-  (): SummaryResponse => ({
-    ...loadBrand(),
-    kpi: { visibility: 0, mentions: 0, recommendations: 0, citations: 0, citedQuestions: 0, questions: 0 },
-    prompts: { total: 0, mentionedEverywhere: 0, mentionedNowhere: 0 },
+/** The global filter (platform / topic / intent) from the query string; other keys are ignored. */
+const parseFilter = (req: Request) => GlobalFilterSchema.safeParse(queryObject(new URL(req.url)));
+
+/** Empty v3 summary: zeros, empty lists, the matrix still names its five columns. */
+function emptySummary(): SummaryV3DTO {
+  const { brand, period } = loadBrand();
+  const zero = { value: 0, rateOfAsked: 0, rateOfPrevious: 0, deltaPt: null };
+  return {
+    brand,
+    period,
+    filter: {},
+    funnel: {
+      questions: { value: 0 },
+      mentions: zero,
+      recommendations: zero,
+      sourceBacked: { cited: 0, rateOfMentioned: 0, deltaPt: null },
+      ownedSource: { owned: 0, totalCitations: 0, shareOfCitations: 0, deltaPt: null },
+    },
     platforms: [],
     trend: [],
     topics: [],
     intents: [],
-    missingIntents: [],
-    worstQuestions: [],
-    facets: loadFacets(),
-  }),
+    sources: { byType: [], topDomains: [], ownedShare: { owned: 0, totalCitations: 0, shareOfCitations: 0 }, ownedByPlatform: [] },
+    matrix: {
+      platforms: PLATFORMS,
+      rows: [],
+      stateCounts: { recommended: 0, partly: 0, mentioned_only: 0, not_mentioned: 0, not_tracked: 0 },
+      collapsedByDefault: false,
+    },
+    periodHalves: periodHalves([], periodDays(loadQuestions())),
+  };
+}
+
+export const getSummary = withSimulate(
+  (): SummaryV3Response => ({ ...emptySummary(), facets: loadFacets() }),
   async (req) => {
-    const parsed = SummaryFilterSchema.safeParse(queryObject(new URL(req.url)));
+    const parsed = parseFilter(req);
     if (!parsed.success) return invalid(parsed.error);
-    return json({ ...computeSummary(loadQuestions(), parsed.data), facets: loadFacets() } satisfies SummaryResponse);
+    return json({ ...computeSummary(loadQuestions(), parsed.data), facets: loadFacets() } satisfies SummaryV3Response);
   },
 );
 
@@ -79,7 +113,7 @@ function matchesText(q: Question, needle: string): boolean {
 export const listQuestions = withSimulate(
   (): QuestionPageResponse => ({ items: [], total: 0, page: 1, pageSize: 20, facets: loadFacets() }),
   async (req) => {
-    const parsed = QuestionQuerySchema.safeParse(queryObject(new URL(req.url)));
+    const parsed = QuestionQueryV3Schema.safeParse(queryObject(new URL(req.url)));
     if (!parsed.success) return invalid(parsed.error);
     const f = parsed.data;
     const rows = applyFilter(loadQuestions(), f).filter(
@@ -99,11 +133,65 @@ export const listQuestions = withSimulate(
   },
 );
 
+const GENERIC_TARGET: ActionTarget = { kind: 'generic', label: 'View products', href: '/products' };
+
+/** Topic → scenario page ("manual mapping" in the UI); undefined when unmapped, null, or the mapping file is gone. */
+function scenarioTarget(topic: string, scenarios: TopicScenarioMap): ActionTarget | undefined {
+  const s = scenarios.get(topic);
+  return s ? { kind: 'scenario', label: `Open ${s.name} scenario`, href: `/scenarios/${s.slug}` } : undefined;
+}
+
+/** First product named in the answer that has a Knowledge Center page. */
+function firstProduct(q: Question, slugs: ReadonlyMap<string, string>): { name: string; slug: string } | undefined {
+  const name = q.mentioned_products.find((p) => slugs.has(p));
+  return name ? { name, slug: slugs.get(name)! } : undefined;
+}
+
+/**
+ * Diagnosis card (05 §2.8): the first matching rule wins. Targets go product-level first (A′); a scenario target is
+ * the hand-curated topic mapping; everything else falls back to /products.
+ */
+export function diagnose(q: Question, scenarios: TopicScenarioMap, slugs: ReadonlyMap<string, string>): Diagnosis {
+  const extra = q.sentiment === 'mixed' ? { extra: ['Answer tone is mixed'] } : {};
+  const product = firstProduct(q, slugs);
+  if (!q.brand_mentioned) {
+    return {
+      code: 'content_gap',
+      title: 'Content gap',
+      action: 'AI answered without the brand. Publish citable content for this question.',
+      target: scenarioTarget(q.topic, scenarios) ?? GENERIC_TARGET,
+      ...extra,
+    };
+  }
+  if (!q.brand_recommended) {
+    return {
+      code: 'persuasion_gap',
+      title: 'Persuasion gap',
+      action: 'Mentioned but not recommended. Strengthen differentiators and proof for the products named.',
+      target: product
+        ? { kind: 'product', label: `Edit ${product.name}`, href: `/admin/products/${product.slug}/edit` }
+        : (scenarioTarget(q.topic, scenarios) ?? GENERIC_TARGET),
+      ...extra,
+    };
+  }
+  if (!q.citations.some((c) => isOwnedUrl(c.url))) {
+    return {
+      code: 'source_gap',
+      title: 'Source gap',
+      action: 'Recommended on third-party sources only. Add first-party pages AI can cite.',
+      target: product ? { kind: 'product', label: `Open ${product.name}`, href: `/products/${product.slug}` } : GENERIC_TARGET,
+      ...extra,
+    };
+  }
+  return { code: 'healthy', title: 'Healthy', action: 'Keep this content fresh.', target: null, ...extra };
+}
+
 export const getQuestion = withSimulate<IdContext>(
-  (): QuestionDetailResponse => ({
+  (): QuestionDetailV3Response => ({
     question: null,
-    otherRuns: [],
-    analysis: { topicScenario: null, citationDomains: [], ownedCitations: 0, products: [] },
+    diagnosis: null,
+    crossPlatform: [],
+    analysis: { citationDomains: [], ownedCitations: 0, products: [] },
   }),
   async (_req, ctx) => {
     const raw = (await ctx?.params)?.id ?? '';
@@ -113,15 +201,16 @@ export const getQuestion = withSimulate<IdContext>(
     const question = all.find((q) => q.id === id.data);
     if (!question) return problem(404, 'Question not found', `No question with id ${id.data}`);
 
-    const otherRuns = all
-      .filter((q) => q.prompt_id === question.prompt_id && q.id !== question.id)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map(({ id, platform, date, brand_mentioned, brand_recommended }) => ({
+    const crossPlatform = all
+      .filter((q) => q.prompt_id === question.prompt_id)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
+      .map(({ id, platform, date, brand_mentioned, brand_recommended, answer_excerpt }) => ({
         id,
         platform,
         date,
         mentioned: brand_mentioned,
         recommended: brand_recommended,
+        answer_excerpt,
       }));
 
     const domains = new Map<string, number>();
@@ -136,31 +225,61 @@ export const getQuestion = withSimulate<IdContext>(
 
     return json({
       question,
-      otherRuns,
+      diagnosis: diagnose(question, loadTopicScenarios(), slugs),
+      crossPlatform,
       analysis: {
-        topicScenario: topicScenario(question.topic),
         citationDomains,
         ownedCitations: question.citations.filter((c) => isOwnedUrl(c.url)).length,
         products: question.mentioned_products.map((name) => ({ name, slug: slugs.get(name) ?? null })),
       },
-    } satisfies QuestionDetailResponse);
+    } satisfies QuestionDetailV3);
   },
 );
 
-export const postInsight = withSimulate(
-  (): InsightResponse => ({ insights: [] }),
+/** Rule cards + the fact sheet built from them (B2's buildActions / factsForLlm). No LLM here. */
+function actionCenter(filter: GlobalFilter): ActionCardsResponse {
+  const all = loadQuestions();
+  const cards = buildActions(all, filter, loadTopicScenarios());
+  const { brand, funnel, periodHalves: halves, sources } = computeSummary(all, filter);
+  return { cards, facts: factsForLlm(cards, { brand, funnel, periodHalves: halves, sources }) };
+}
+
+function emptyFacts(): LlmFacts {
+  const s = emptySummary();
+  const days = periodDays(loadQuestions());
+  return {
+    brand: s.brand,
+    period: { from: days[0] ?? '', to: days[days.length - 1] ?? '' },
+    funnel: { questions: 0, mentions: 0, mentionRateOfAsked: 0, recommendations: 0, recommendRateOfAsked: 0, recommendRateOfMentioned: 0 },
+    delta: { mentionRateOfAskedPt: null, firstN: 0, lastN: 0 },
+    sources: { ownedShareOfCitations: 0, totalCitations: 0 },
+    topFindings: [],
+  };
+}
+
+export const getActionCards = withSimulate(
+  (): ActionCardsResponse => ({ cards: [], facts: emptyFacts() }),
   async (req) => {
-    let body: unknown = {};
-    const text = await req.text();
-    if (text.trim()) {
-      try {
-        body = JSON.parse(text);
-      } catch {
-        return problem(400, 'Invalid JSON body');
-      }
-    }
-    const parsed = InsightBodySchema.safeParse(body);
+    const parsed = parseFilter(req);
     if (!parsed.success) return invalid(parsed.error);
-    return json({ insights: buildInsights(loadQuestions(), parsed.data) } satisfies InsightResponse);
+    return json(actionCenter(parsed.data) satisfies ActionCardsResponse);
+  },
+);
+
+/** POST body: { mode, platform?, topic?, intent? }. Fallback (no key / timeout / error) lives in dispatchSummary. */
+export const postActionSummary = withSimulate(
+  (): LlmSummaryResult => ({ mode: 'rules', text: '', numbers: [], verification: verificationOf(0, 0), model: null, reason: null }),
+  async (req) => {
+    let body: unknown;
+    try {
+      body = JSON.parse((await req.text()) || 'null');
+    } catch {
+      return problem(400, 'Invalid JSON body');
+    }
+    const parsed = SummaryRequestSchema.safeParse(body);
+    if (!parsed.success) return invalid(parsed.error);
+    const { mode, ...filter } = parsed.data;
+    const { facts } = actionCenter(filter);
+    return json((await dispatchSummary(mode, facts)) satisfies LlmSummaryResult);
   },
 );

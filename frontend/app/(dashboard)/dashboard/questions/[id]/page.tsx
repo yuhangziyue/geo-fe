@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { loadQuestions } from '@geo/backend/dashboard/repo';
-import { QuestionDetailView } from '@/components/dashboard/QuestionDetailView';
+import { QuestionDetail } from '@/components/dashboard/detail/QuestionDetail';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export default async function QuestionDetailPage({ params }: { params: Promise<{
   if (!/^\d+$/.test(id) || !loadQuestions().some((q) => q.id === Number(id))) notFound();
   return (
     <Suspense>
-      <QuestionDetailView id={id} />
+      <QuestionDetail id={id} />
     </Suspense>
   );
 }

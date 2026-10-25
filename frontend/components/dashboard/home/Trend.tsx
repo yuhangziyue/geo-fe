@@ -11,7 +11,7 @@ import { asyncProps, ClearFilters, formatDay, useIsNarrow, type SummaryApi } fro
 /**
  * ④-right 7-day rolling visibility (05 §2.5, 06 §5.4): the rolling line is the signal (no smoothing, no markers,
  * absent while the window is not full); daily values are faint dots because a day is only a handful of questions.
- * Daily dots are a line series with an invisible line — the shared echarts.ts registers Bar + Line only.
+ * Daily dots are a scatter series: one dot for every day that has questions, never joined by a line.
  */
 export function Trend({ api }: { api: SummaryApi }) {
   const narrow = useIsNarrow();
@@ -48,6 +48,17 @@ export function Trend({ api }: { api: SummaryApi }) {
   );
 }
 
+/** 05 §2.5 daily tooltip: "Aug 4 · 4/4 mentioned (n=4)". */
+function dailyTip(p: TrendPoint): string {
+  const day = formatDay(p.date);
+  return p.dailyQuestions === 0 ? `${day} · No questions this day` : `${day} · ${p.dailyMentions}/${p.dailyQuestions} mentioned (n=${p.dailyQuestions})`;
+}
+
+/** 05 §2.5 rolling tooltip: "7-day: 22/28 (79%)"; while the window is not full there is no rolling value. */
+function rollingTip(p: TrendPoint): string {
+  return p.rollingVisibility === null ? '7-day: —' : `7-day: ${p.rollingMentions}/${p.rollingQuestions} (${p.rollingVisibility}%)`;
+}
+
 function trendChart(points: TrendPoint[], narrow: boolean): { option: EChartsOption; table: ChartTable } {
   const days = points.map((p) => formatDay(p.date));
   const option: EChartsOption = {
@@ -57,9 +68,7 @@ function trendChart(points: TrendPoint[], narrow: boolean): { option: EChartsOpt
         const list = Array.isArray(params) ? params : [params];
         const p = points[list[0]?.dataIndex ?? -1];
         if (!p) return '';
-        const rolling = p.rollingVisibility === null ? '7-day —' : `7-day ${p.rollingVisibility}% (n=${p.rollingN})`;
-        const daily = p.dailyVisibility === null ? 'No questions this day' : `Daily ${p.dailyVisibility}% (n=${p.dailyN})`;
-        return `<b>${formatDay(p.date)}</b> · ${rolling}<br/>${daily}`;
+        return `${dailyTip(p)}<br/>${rollingTip(p)}`;
       },
     },
     legend: narrow ? { top: 0 } : { bottom: 0 },
@@ -79,18 +88,15 @@ function trendChart(points: TrendPoint[], narrow: boolean): { option: EChartsOpt
         data: points.map((p) => p.rollingVisibility),
       },
       {
+        // A scatter draws every data point (no symbol sampling, the intent of the old line's showAllSymbol) and
+        // never joins them; a day without questions is '-' (missing), so it gets no dot instead of a 0% dot.
         name: 'Daily',
-        type: 'line',
-        smooth: false,
+        type: 'scatter',
         symbol: 'circle',
         symbolSize: 6,
-        showSymbol: true,
-        showAllSymbol: true,
-        connectNulls: false,
-        lineStyle: { width: 0, opacity: 0 },
         itemStyle: { color: series.dailyDot },
         emphasis: { disabled: true },
-        data: points.map((p) => p.dailyVisibility),
+        data: points.map((p) => p.dailyVisibility ?? '-'),
       },
     ],
   };

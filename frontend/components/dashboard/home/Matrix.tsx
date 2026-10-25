@@ -5,7 +5,7 @@ import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
 import { AsyncState, Card } from '../AsyncState';
 import { INTENT_LABELS, type IntentTier, type MatrixCell, type MatrixDTO, type MatrixRow, type MatrixState, type Platform } from '../types';
 import { useGlobalFilter } from '../useGlobalFilter';
-import { asyncProps, ClearFilters, INTENT_BADGE_CLASS, PLATFORM_ABBR, type SummaryApi } from './shared';
+import { asyncProps, ClearFilters, formatDay, INTENT_BADGE_CLASS, PLATFORM_ABBR, type SummaryApi } from './shared';
 
 /** Rows shown before "Show all" (05 §2.3). */
 const TOP_ROWS = 12;
@@ -266,8 +266,9 @@ function Cell(props: {
   const { cell, platform, alignRight, href, tabIndex, onFocus, register } = props;
   const name = STATE_NAME[cell.state];
   const isTracked = cell.state !== 'not_tracked' && href !== null;
+  const latest = cell.latestDate ? `Latest run ${formatDay(cell.latestDate)}` : null;
   const ariaLabel = isTracked
-    ? `${platform}: ${name}, recommended ${cell.recommended} of ${cell.n}, mentioned ${cell.mentioned} of ${cell.n}`
+    ? `${platform}: ${name}, recommended ${cell.recommended} of ${cell.n}, mentioned ${cell.mentioned} of ${cell.n}${latest ? `, ${latest.toLowerCase()}` : ''}`
     : `${platform}: Not tracked`;
   const box = `flex h-9 w-full items-center justify-center rounded-md text-xs font-semibold tabular-nums ${CELL_CLASS[cell.state]}`;
   const tip = (
@@ -277,15 +278,17 @@ function Cell(props: {
         isTracked ? 'group-focus-within/cell:block' : ''
       } ${alignRight ? 'right-0' : 'left-0'}`}
     >
+      {/* 05 §2.3 / T-FIX: "<Platform> · <state> · Latest run <Mon D>" */}
       <span className="block font-medium text-ink">
         {platform} · {name}
+        {isTracked && latest ? ` · ${latest}` : ''}
       </span>
       {isTracked ? (
         <>
           <span className="block tabular-nums">
             Recommended {cell.recommended}/{cell.n} · Mentioned {cell.mentioned}/{cell.n}
           </span>
-          <span className="block">Latest run · Click to open</span>
+          <span className="block">Click to open the latest run</span>
         </>
       ) : (
         <span className="block">Not tracked on {platform}</span>

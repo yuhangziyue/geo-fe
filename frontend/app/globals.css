@@ -3,5 +3,22 @@
 @tailwind utilities;
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-surface-page text-ink antialiased;
+}
+
+@layer components {
+  /* "Not tracked": the one hatch vocabulary (matrix cells, intent S placeholder). */
+  .cov-untracked {
+    background-color: theme('colors.cov.untracked');
+    background-image: repeating-linear-gradient(
+      45deg,
+      theme('colors.cov.untracked-hatch') 0,
+      theme('colors.cov.untracked-hatch') 1px,
+      transparent 1px,
+      transparent 6px
+    );
+  }
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2;
+  }
 }

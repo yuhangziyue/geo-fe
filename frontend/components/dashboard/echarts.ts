@@ -2,9 +2,11 @@
 // drop the rest of echarts; EChart.tsx loads this module lazily, so none of it is in the first-load bundle.
 import { BarChart, LineChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
-import { init, use as registerModules } from 'echarts/core';
+import { init, registerTheme, use as registerModules } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
+import { geoTheme } from '../../design/chartTheme';
 
 registerModules([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
+registerTheme('geo', geoTheme);
 
 export { init };

@@ -70,16 +70,10 @@ export function GenerateButton({ state, onClick }: { state: SummaryState; onClic
   );
 }
 
-const REASON: Record<NonNullable<LlmSummaryResult['reason']>, string> = {
-  no_api_key: 'no API key',
-  timeout: 'timed out',
-  upstream_error: 'upstream error',
-};
-
 /**
  * The summary block above the cards (06 §5.8): `surface-sunken`, ≤ 72ch. Every unverified number is marked in
  * place from its [start, end) offsets — red text on `danger-subtle`, dashed underline, focusable, described as
- * "Not found in source data". The footer states the verification band; a fallback states why, lightly.
+ * "Not found in source data". The footer states the verification band; a fallback's reason is the template text's first line.
  */
 export function LlmSummary({ state, onRetry }: { state: SummaryState; onRetry: () => void }) {
   const noteId = useId();
@@ -111,10 +105,8 @@ export function LlmSummary({ state, onRetry }: { state: SummaryState; onRetry: (
       <p className="max-w-[72ch] whitespace-pre-line text-sm leading-6 text-ink">{markUnverified(r, noteId)}</p>
       <span id={noteId} className="sr-only">Not found in source data</span>
       <div className="space-y-0.5 text-xs">
+        {/* A fallback's reason is the template's own first line (controller ruling, B2); not repeated here. */}
         <VerificationLine v={v} />
-        {r.mode === 'rules' && r.reason && (
-          <p className="text-ink-secondary">AI summary unavailable ({REASON[r.reason]}) — showing rule-based findings.</p>
-        )}
       </div>
     </div>
   );
@@ -145,7 +137,7 @@ function markUnverified(r: LlmSummaryResult, noteId: string): ReactNode[] {
         tabIndex={0}
         title="Not found in source data"
         aria-describedby={noteId}
-        className="focus-ring rounded-sm bg-danger-subtle px-0.5 text-danger underline decoration-danger decoration-dashed decoration-1 underline-offset-2"
+        className="focus-ring rounded-md bg-danger-subtle px-0.5 text-danger underline decoration-danger decoration-dashed decoration-1 underline-offset-2"
       >
         {r.text.slice(n.start, n.end)}
       </span>,

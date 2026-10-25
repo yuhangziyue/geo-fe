@@ -6,8 +6,7 @@ import { AsyncState, Card } from '../AsyncState';
 import { INTENT_TIERS_DISCLAIMER, type IntentRow } from '../types';
 import { useGlobalFilter } from '../useGlobalFilter';
 import { InfoTip } from './InfoTip';
-import { INTENT_BADGE_CLASS } from './Matrix';
-import { asyncProps, ClearFilters, type SummaryApi } from './shared';
+import { asyncProps, ClearFilters, INTENT_BADGE_CLASS, type SummaryApi } from './shared';
 
 /**
  * ⑤-right Intent tiers (05 §2.6, 06 §5.5): four columns C → B → A → S in the backend's order
@@ -30,7 +29,7 @@ export function Intents({ api }: { api: SummaryApi }) {
         isEmpty={!!intents && intents.every((t) => t.isEmpty)}
         skeletonHeight={180}
         skeleton={
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="h-40 rounded-xl bg-surface-sunken" />
             ))}
@@ -44,7 +43,7 @@ export function Intents({ api }: { api: SummaryApi }) {
         }
       >
         {() => (
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             {intents!.map((t) => (
               <li key={t.tier} className="min-w-0">
                 {t.isEmpty ? <EmptyTier t={t} /> : <Tier t={t} />}

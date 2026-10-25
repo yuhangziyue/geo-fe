@@ -5,7 +5,7 @@ import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
 import { AsyncState, Card } from '../AsyncState';
 import { INTENT_LABELS, type IntentTier, type MatrixCell, type MatrixDTO, type MatrixRow, type MatrixState, type Platform } from '../types';
 import { useGlobalFilter } from '../useGlobalFilter';
-import { asyncProps, ClearFilters, PLATFORM_ABBR, type SummaryApi } from './shared';
+import { asyncProps, ClearFilters, INTENT_BADGE_CLASS, PLATFORM_ABBR, type SummaryApi } from './shared';
 
 /** Rows shown before "Show all" (05 §2.3). */
 const TOP_ROWS = 12;
@@ -29,14 +29,6 @@ const CELL_CLASS: Record<MatrixState, string> = {
   not_tracked: 'cov-untracked text-cov-untracked-ink',
 };
 
-/** 06 §3.4 intent badges (teal, ordered C → S). Literal class names so Tailwind generates them. */
-export const INTENT_BADGE_CLASS: Record<IntentTier, string> = {
-  C: 'bg-intent-c text-intent-c-ink ring-1 ring-intent-b',
-  B: 'bg-intent-b text-intent-b-ink',
-  A: 'bg-intent-a text-intent-a-ink',
-  S: 'bg-intent-s text-intent-s-ink',
-};
-
 /** Row template: header column + 5 platform columns (1440: 280+/56 · 1024: 220+/52 · <768: stacked, 5 × 1fr). */
 const ROW_GRID =
   'grid grid-cols-5 gap-1 md:grid-cols-[minmax(220px,1fr)_repeat(5,52px)] md:items-center xl:grid-cols-[minmax(280px,1fr)_repeat(5,56px)]';
@@ -46,7 +38,6 @@ const ROW_GRID =
  * the five states, the gap-score order and the counts all come from the backend; this file never derives them.
  */
 export function Matrix({ api }: { api: SummaryApi }) {
-  const { filter } = useGlobalFilter();
   const m = api.data?.matrix;
   return (
     <Card
@@ -65,8 +56,9 @@ export function Matrix({ api }: { api: SummaryApi }) {
           </>
         }
       >
-        {/* Keyed by the filter: expand / collapse is view state (never in the URL) and restarts per selection. */}
-        {() => <MatrixBody key={`${filter.platform ?? ''}|${filter.topic ?? ''}|${filter.intent ?? ''}`} m={m!} />}
+        {/* Keyed by the DATA's flag, not the URL: useApi keeps the previous data while the next request loads, so a
+            URL key would remount with the stale flag. Platform added → collapsed (hint + expand); cleared → expanded. */}
+        {() => <MatrixBody key={m!.collapsedByDefault ? 'collapsed' : 'open'} m={m!} />}
       </AsyncState>
     </Card>
   );
@@ -125,12 +117,12 @@ function Legend({ counts }: { counts: Record<MatrixState, number> }) {
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-secondary" aria-label="Legend">
         {LEGEND_ORDER.map((s) => (
           <li key={s} className="flex items-center gap-1.5">
-            <span aria-hidden className={`inline-block h-3 w-4 rounded-sm ${CELL_CLASS[s]}`} />
+            <span aria-hidden className={`inline-block h-3 w-4 rounded-md ${CELL_CLASS[s]}`} />
             {STATE_NAME[s]} <span className="tabular-nums text-ink-tertiary">{counts[s]}</span>
           </li>
         ))}
       </ul>
-      <p className="text-xs text-ink-tertiary md:hidden">
+      <p className="text-xs text-ink-tertiary xl:hidden">
         {(Object.keys(PLATFORM_ABBR) as Platform[]).map((p) => `${PLATFORM_ABBR[p]} ${p}`).join(' · ')}
       </p>
     </div>
@@ -171,7 +163,8 @@ function Grid({ m, rows }: { m: MatrixDTO; rows: MatrixRow[] }) {
   }, []);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (!active) return;
+    // Only keys pressed on a cell move the roving focus; row-header links keep their native behaviour.
+    if (!active || !(e.target as HTMLElement).closest('[role="gridcell"]')) return;
     const { r, c } = active;
     const row = rows[r]!;
     let next: Pos | null = null;
@@ -201,12 +194,12 @@ function Grid({ m, rows }: { m: MatrixDTO; rows: MatrixRow[] }) {
 
   return (
     <div role="grid" aria-label="Questions by platform" aria-rowcount={m.rows.length + 1} onKeyDown={onKeyDown} className="text-sm">
-      <div role="row" className={`${ROW_GRID} sticky top-0 z-10 border-b border-line bg-surface-card py-1`}>
+      <div role="row" className={`${ROW_GRID} border-b md:sticky md:top-0 md:z-10 border-line bg-surface-card py-1`}>
         <div role="columnheader" className="hidden text-xs font-medium text-ink-secondary md:block">Question</div>
         {m.platforms.map((p) => (
           <div key={p} role="columnheader" title={p} aria-label={p} className="whitespace-nowrap text-center text-xs font-medium text-ink-secondary">
-            <span className="md:hidden">{PLATFORM_ABBR[p]}</span>
-            <span className="hidden md:inline">{p}</span>
+            <span className="xl:hidden">{PLATFORM_ABBR[p]}</span>
+            <span className="hidden xl:inline">{p}</span>
           </div>
         ))}
       </div>

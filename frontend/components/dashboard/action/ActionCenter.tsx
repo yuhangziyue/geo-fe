@@ -58,7 +58,7 @@ function ActionCenterBody({ cards, filter, simulate }: { cards: CardsApi; filter
             <ol className="grid gap-4 md:grid-cols-2" aria-label="Action cards, most severe first">
               {cards.data!.cards.map((c) => (
                 <li key={c.id} className="flex">
-                  <ActionCard card={c} />
+                  <ActionCard card={c} simulate={simulate} />
                 </li>
               ))}
             </ol>

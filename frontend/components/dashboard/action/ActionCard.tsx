@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ActionCard as ActionCardData, EvidenceDatum, Severity } from '../types';
+import { withSimulate } from '../useApi';
 
 const SEVERITY: Record<Severity, { label: string; bar: string; text: string }> = {
   high: { label: 'High', bar: 'border-l-severity-high', text: 'text-danger' },
@@ -18,7 +19,8 @@ export function formatEvidence(d: EvidenceDatum): { value: string; of: string | 
  * One action card (05 §3, 06 §5.8): 4px severity bar, severity word + finding, ≤ 3 evidence numbers, one
  * imperative action, then two TEXT links (evidence · P2 target) — never buttons, one primary CTA per screen.
  */
-export function ActionCard({ card }: { card: ActionCardData }) {
+/** `simulate` travels with every drill-down (contract README §5); the backend's evidenceHref carries only the filter. */
+export function ActionCard({ card, simulate }: { card: ActionCardData; simulate: string | null }) {
   const sev = SEVERITY[card.severity];
   return (
     <article className={`flex w-full min-w-0 flex-col gap-3 rounded-xl border border-l-4 border-line bg-surface-card p-4 ${sev.bar}`}>
@@ -51,7 +53,7 @@ export function ActionCard({ card }: { card: ActionCardData }) {
       </div>
 
       <footer className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <Link href={card.evidenceHref} className="focus-ring rounded-md text-ink-secondary hover:text-ink hover:underline">
+        <Link href={withSimulate(card.evidenceHref, simulate)} className="focus-ring rounded-md text-ink-secondary hover:text-ink hover:underline">
           View evidence
         </Link>
         {card.target && (

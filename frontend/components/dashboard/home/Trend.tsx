@@ -85,6 +85,7 @@ function trendChart(points: TrendPoint[], narrow: boolean): { option: EChartsOpt
         symbol: 'circle',
         symbolSize: 6,
         showSymbol: true,
+        showAllSymbol: true,
         connectNulls: false,
         lineStyle: { width: 0, opacity: 0 },
         itemStyle: { color: series.dailyDot },

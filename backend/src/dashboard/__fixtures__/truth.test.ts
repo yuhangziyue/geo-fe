@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pct } from '../metrics';
 import { loadQuestions } from '../repo';
-import { OWNED_DOMAIN, PLATFORMS, type Question } from '../schema';
+import { OWNED_DOMAIN, PLATFORMS, RULE_IDS, type Question } from '../schema';
 import {
   TRUTH_ACTION_CARDS,
   TRUTH_DATA_SHAPE,
@@ -47,20 +47,19 @@ describe('truth table matches questions.json', () => {
     const r = count(all, recommended);
     expect({
       questions: all.length,
-      mentions: m,
-      recommendations: r,
-      mentionRate: pct(m, all.length),
-      rateOfMentions: pct(r, m),
-      rateOfQuestions: pct(r, all.length),
+      mentions: { value: m, rateOfAsked: pct(m, all.length), rateOfPrevious: pct(m, all.length) },
+      recommendations: { value: r, rateOfAsked: pct(r, all.length), rateOfPrevious: pct(r, m) },
     }).toEqual(TRUTH_FUNNEL);
   });
 
   it('source-backed and owned share', () => {
     const c = count(all, cited);
-    expect({ cited: c, mentions: count(all, mentioned), pct: pct(c, count(all, mentioned)) }).toEqual(TRUTH_SOURCE_BACKED);
+    expect({ cited: c, mentions: count(all, mentioned), rateOfMentioned: pct(c, count(all, mentioned)) }).toEqual(
+      TRUTH_SOURCE_BACKED,
+    );
     const urls = all.flatMap((q) => q.citations.map((x) => x.url));
     const owned = urls.filter(isOwned).length;
-    expect({ owned, total: urls.length, pct: pct(owned, urls.length) }).toEqual(TRUTH_OWNED_SHARE);
+    expect({ owned, totalCitations: urls.length, shareOfCitations: pct(owned, urls.length) }).toEqual(TRUTH_OWNED_SHARE);
   });
 
   it('platforms', () => {
@@ -74,8 +73,8 @@ describe('truth table matches questions.json', () => {
         recommendations: count(rows, recommended),
         cited: count(rows, cited),
         visibility: pct(m, rows.length),
-        recommendationRate: pct(count(rows, recommended), rows.length),
-        sourceBackedRate: pct(count(rows, cited), m),
+        recommendationRateOfAsked: pct(count(rows, recommended), rows.length),
+        sourceBackedRateOfMentioned: pct(count(rows, cited), m),
         ownedCitations: rows.flatMap((q) => q.citations).filter((c) => isOwned(c.url)).length,
         isWorst: t.isWorst,
       }).toEqual(t);
@@ -111,8 +110,8 @@ describe('truth table matches questions.json', () => {
         questions: rows.length,
         mentions: count(rows, mentioned),
         recommendations: count(rows, recommended),
-        mentionRate: pct(count(rows, mentioned), rows.length),
-        recommendationRate: pct(count(rows, recommended), rows.length),
+        visibility: pct(count(rows, mentioned), rows.length),
+        recommendationRateOfAsked: pct(count(rows, recommended), rows.length),
       }).toEqual(t);
     }
   });
@@ -198,23 +197,47 @@ describe('truth table matches questions.json', () => {
     }).toEqual(TRUTH_F3_F6);
   });
 
-  it('action-card table is ordered by severity', () => {
+  it('action cards: affectedQuestions per the RuleId definitions in schema.ts', () => {
+    const notMentioned = all.filter((q) => !q.brand_mentioned);
+    const weakestPlatform = TRUTH_PLATFORMS.find((p) => p.isWorst)!.name;
+    const weakestTopic = TRUTH_TOPICS.find((t) => t.isWorst)!.topic;
+    const affected: Record<string, number> = {
+      'no-source-no-mention': count(notMentioned, (q) => !cited(q)),
+      'visibility-declining': count(notMentioned, (q) => q.date >= TRUTH_PERIOD.last.from && q.date <= TRUTH_PERIOD.last.to),
+      'weak-platform': count(notMentioned, (q) => q.platform === weakestPlatform),
+      'mention-not-recommended': count(all, (q) => q.brand_mentioned && !q.brand_recommended),
+      'weak-topic': count(notMentioned, (q) => q.topic === weakestTopic),
+      'owned-source-share': count(all, (q) => cited(q) && !q.citations.some((c) => isOwned(c.url))),
+      'decision-tier-untracked': count(all, (q) => q.intent_type === 'S'),
+    };
+    expect(Object.fromEntries(TRUTH_ACTION_CARDS.map((c) => [c.id, c.affectedQuestions]))).toEqual(affected);
+  });
+
+  it('action cards: ordered by severity, then affectedQuestions desc, then RULE_IDS order', () => {
     const rank = { high: 0, medium: 1, low: 2 } as const;
-    const ranks = TRUTH_ACTION_CARDS.map((c) => rank[c.severity]);
-    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
-    expect(new Set(TRUTH_ACTION_CARDS.map((c) => c.id)).size).toBe(7);
+    const sorted = [...TRUTH_ACTION_CARDS].sort(
+      (a, b) =>
+        rank[a.severity] - rank[b.severity] ||
+        b.affectedQuestions - a.affectedQuestions ||
+        RULE_IDS.indexOf(a.id) - RULE_IDS.indexOf(b.id),
+    );
+    expect(TRUTH_ACTION_CARDS).toEqual(sorted);
+    expect(new Set(TRUTH_ACTION_CARDS.map((c) => c.id))).toEqual(new Set(RULE_IDS));
   });
 
   it('TRUTH_PCT_VALUES is the de-duplicated set of every %-truth above', () => {
     const expected = new Set<number>([
-      ...Object.entries(TRUTH_FUNNEL).filter(([k]) => /Rate|rateOf/.test(k)).map(([, v]) => v),
-      TRUTH_SOURCE_BACKED.pct,
-      TRUTH_OWNED_SHARE.pct,
-      ...TRUTH_PLATFORMS.flatMap((p) => [p.visibility, p.recommendationRate, p.sourceBackedRate]),
+      TRUTH_FUNNEL.mentions.rateOfAsked,
+      TRUTH_FUNNEL.mentions.rateOfPrevious,
+      TRUTH_FUNNEL.recommendations.rateOfAsked,
+      TRUTH_FUNNEL.recommendations.rateOfPrevious,
+      TRUTH_SOURCE_BACKED.rateOfMentioned,
+      TRUTH_OWNED_SHARE.shareOfCitations,
+      ...TRUTH_PLATFORMS.flatMap((p) => [p.visibility, p.recommendationRateOfAsked, p.sourceBackedRateOfMentioned]),
       TRUTH_PERIOD.first.pct,
       TRUTH_PERIOD.last.pct,
       ...TRUTH_TREND.rolling.map((w) => w.pct),
-      ...TRUTH_INTENTS.filter((t) => t.questions > 0).flatMap((t) => [t.mentionRate, t.recommendationRate]),
+      ...TRUTH_INTENTS.filter((t) => t.questions > 0).flatMap((t) => [t.visibility, t.recommendationRateOfAsked]),
       ...TRUTH_TOPICS.map((t) => t.visibility),
     ]);
     expect([...TRUTH_PCT_VALUES].sort((a, b) => a - b)).toEqual([...expected].sort((a, b) => a - b));

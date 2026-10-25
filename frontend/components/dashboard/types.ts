@@ -1,5 +1,7 @@
 // Response shapes of /api/dashboard/* — owned by the backend; components import them from here, never keep a copy.
-// Owner: T0 (see __contracts__/README.md). Types are erased at build time; the few values below are tiny constants.
+// Owner: T0 (see __contracts__/README.md). The type exports are erased at build time. The value exports at the bottom
+// (and useGlobalFilter's URL helpers) DO ship schema.ts to the browser, zod included — accepted: zod is already a
+// frontend dependency and this keeps one definition of each constant.
 
 // e2 (v2) shapes, kept only while the old components exist. F1/F2 delete those components; T-END removes these.
 export type {
@@ -21,6 +23,7 @@ export type {
   DiagnosisCode,
   EvidenceDatum,
   FunnelKpi,
+  FunnelStep,
   GlobalFilter,
   IntentRow,
   IntentTier,
@@ -30,6 +33,7 @@ export type {
   MatrixDTO,
   MatrixRow,
   MatrixState,
+  NumberUnit,
   PeriodHalves,
   PlatformRow,
   QuestionDetailV3,
@@ -39,13 +43,23 @@ export type {
   SourceStructure,
   SummaryMode,
   SummaryRequest,
+  SummaryResultMode,
   SummaryV3DTO,
   SummaryV3Response as Summary,
   TargetKind,
   TopicRow,
   TrendPoint,
+  Verification,
   VerifiedNumber,
 } from '@geo/backend/dashboard/schema';
 
-// F9 text and the fixed vocabularies — one definition, shared with the backend.
-export { INTENT_LABELS, INTENTS, OWNED_DOMAIN_DISCLAIMER, PLATFORMS } from '@geo/backend/dashboard/schema';
+// ⓘ texts and the fixed vocabularies — one definition, shared with the backend.
+export {
+  INTENT_DISPLAY_ORDER,
+  INTENT_LABELS,
+  INTENT_TIERS_DISCLAIMER,
+  INTENTS,
+  OWNED_DOMAIN_DISCLAIMER,
+  PLATFORMS,
+  SOURCE_TYPE_NOTE,
+} from '@geo/backend/dashboard/schema';

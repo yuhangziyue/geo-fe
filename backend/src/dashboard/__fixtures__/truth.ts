@@ -11,24 +11,21 @@
  */
 import type { IntentTier, MatrixState, Platform, RuleId, Severity } from '../schema';
 
-/** Nested funnel Asked → Mentioned → Recommended (05 §2.2). */
+/**
+ * Nested funnel Asked → Mentioned → Recommended (05 §2.2), shaped like FunnelKpi.
+ * rateOfAsked = ÷ questions; rateOfPrevious = ÷ the previous step (for mentions the previous step is Asked).
+ */
 export const TRUTH_FUNNEL = {
   questions: 120,
-  mentions: 85,
-  recommendations: 56,
-  /** mentions / questions */
-  mentionRate: 71,
-  /** recommendations / mentions (conversion) */
-  rateOfMentions: 66,
-  /** recommendations / questions */
-  rateOfQuestions: 47,
+  mentions: { value: 85, rateOfAsked: 71, rateOfPrevious: 71 },
+  recommendations: { value: 56, rateOfAsked: 47, rateOfPrevious: 66 },
 } as const;
 
 /** Side metric, not nested: questions with ≥1 citation ÷ mentions (F6). */
-export const TRUTH_SOURCE_BACKED = { cited: 42, mentions: 85, pct: 49 } as const;
+export const TRUTH_SOURCE_BACKED = { cited: 42, mentions: 85, rateOfMentioned: 49 } as const;
 
 /** Owned-domain citations ÷ all citations (F4). */
-export const TRUTH_OWNED_SHARE = { owned: 7, total: 71, pct: 10 } as const;
+export const TRUTH_OWNED_SHARE = { owned: 7, totalCitations: 71, shareOfCitations: 10 } as const;
 
 export interface PlatformTruth {
   name: Platform;
@@ -37,20 +34,21 @@ export interface PlatformTruth {
   recommendations: number;
   cited: number;
   visibility: number;
-  recommendationRate: number;
+  /** recommendations ÷ n */
+  recommendationRateOfAsked: number;
   /** cited ÷ mentions */
-  sourceBackedRate: number;
+  sourceBackedRateOfMentioned: number;
   ownedCitations: number;
   isWorst: boolean;
 }
 
 /** In PLATFORMS order (§A, F8). */
 export const TRUTH_PLATFORMS: readonly PlatformTruth[] = [
-  { name: 'ChatGPT', n: 25, mentions: 19, recommendations: 13, cited: 10, visibility: 76, recommendationRate: 52, sourceBackedRate: 53, ownedCitations: 2, isWorst: false },
-  { name: 'Gemini', n: 23, mentions: 20, recommendations: 12, cited: 7, visibility: 87, recommendationRate: 52, sourceBackedRate: 35, ownedCitations: 0, isWorst: false },
-  { name: 'Claude', n: 24, mentions: 15, recommendations: 10, cited: 10, visibility: 62, recommendationRate: 42, sourceBackedRate: 67, ownedCitations: 0, isWorst: false },
-  { name: 'Perplexity', n: 24, mentions: 20, recommendations: 15, cited: 11, visibility: 83, recommendationRate: 62, sourceBackedRate: 55, ownedCitations: 4, isWorst: false },
-  { name: 'DeepSeek', n: 24, mentions: 11, recommendations: 6, cited: 4, visibility: 46, recommendationRate: 25, sourceBackedRate: 36, ownedCitations: 1, isWorst: true },
+  { name: 'ChatGPT', n: 25, mentions: 19, recommendations: 13, cited: 10, visibility: 76, recommendationRateOfAsked: 52, sourceBackedRateOfMentioned: 53, ownedCitations: 2, isWorst: false },
+  { name: 'Gemini', n: 23, mentions: 20, recommendations: 12, cited: 7, visibility: 87, recommendationRateOfAsked: 52, sourceBackedRateOfMentioned: 35, ownedCitations: 0, isWorst: false },
+  { name: 'Claude', n: 24, mentions: 15, recommendations: 10, cited: 10, visibility: 62, recommendationRateOfAsked: 42, sourceBackedRateOfMentioned: 67, ownedCitations: 0, isWorst: false },
+  { name: 'Perplexity', n: 24, mentions: 20, recommendations: 15, cited: 11, visibility: 83, recommendationRateOfAsked: 62, sourceBackedRateOfMentioned: 55, ownedCitations: 4, isWorst: false },
+  { name: 'DeepSeek', n: 24, mentions: 11, recommendations: 6, cited: 4, visibility: 46, recommendationRateOfAsked: 25, sourceBackedRateOfMentioned: 36, ownedCitations: 1, isWorst: true },
 ];
 
 /** First / last 15 days and the period delta (F5). Dates inclusive. */
@@ -81,16 +79,18 @@ export interface IntentTruth {
   questions: number;
   mentions: number;
   recommendations: number;
-  mentionRate: number;
-  recommendationRate: number;
+  /** mentions ÷ questions */
+  visibility: number;
+  /** recommendations ÷ questions */
+  recommendationRateOfAsked: number;
 }
 
 /** Intent tiers in display order C → B → A → S (05 §2.6). S has no questions: render "Not tracked", not 0%. */
 export const TRUTH_INTENTS: readonly IntentTruth[] = [
-  { tier: 'C', questions: 45, mentions: 34, recommendations: 19, mentionRate: 76, recommendationRate: 42 },
-  { tier: 'B', questions: 15, mentions: 12, recommendations: 9, mentionRate: 80, recommendationRate: 60 },
-  { tier: 'A', questions: 60, mentions: 39, recommendations: 28, mentionRate: 65, recommendationRate: 47 },
-  { tier: 'S', questions: 0, mentions: 0, recommendations: 0, mentionRate: 0, recommendationRate: 0 },
+  { tier: 'C', questions: 45, mentions: 34, recommendations: 19, visibility: 76, recommendationRateOfAsked: 42 },
+  { tier: 'B', questions: 15, mentions: 12, recommendations: 9, visibility: 80, recommendationRateOfAsked: 60 },
+  { tier: 'A', questions: 60, mentions: 39, recommendations: 28, visibility: 65, recommendationRateOfAsked: 47 },
+  { tier: 'S', questions: 0, mentions: 0, recommendations: 0, visibility: 0, recommendationRateOfAsked: 0 },
 ];
 
 /** Per-topic visibility; Office Security is the single weakest topic (drives the `weak-topic` card). */
@@ -105,7 +105,7 @@ export const TRUTH_TOPICS: ReadonlyArray<{ topic: string; questions: number; men
   { topic: 'Warehouse Security', questions: 15, mentions: 12, visibility: 80, isWorst: false },
 ];
 
-/** `source_type` label distribution, count descending (05 §2.7). Sums to TRUTH_OWNED_SHARE.total. */
+/** `source_type` label distribution, count descending (05 §2.7). Sums to TRUTH_OWNED_SHARE.totalCitations. */
 export const TRUTH_SOURCE_TYPES = [
   { type: 'Industry', count: 21 },
   { type: 'Review', count: 19 },
@@ -162,16 +162,20 @@ export const TRUTH_F3_F6 = {
   recommendedWithoutOwned: 51,
 } as const;
 
-/** Action center on the full dataset: all 7 rules fire, in this order (severity, then impact). */
+/**
+ * Action center on the full dataset: all 7 rules fire. Order = compareActionCards (severity, then
+ * affectedQuestions desc, then RULE_IDS order). affectedQuestions follows the per-rule definitions on RuleId in
+ * schema.ts; truth.test.ts recomputes each value from questions.json.
+ */
 export const TRUTH_ACTION_CARDS = [
-  { id: 'no-source-no-mention', severity: 'high' },
-  { id: 'visibility-declining', severity: 'high' },
-  { id: 'weak-platform', severity: 'high' },
-  { id: 'mention-not-recommended', severity: 'medium' },
-  { id: 'weak-topic', severity: 'medium' },
-  { id: 'owned-source-share', severity: 'medium' },
-  { id: 'decision-tier-untracked', severity: 'low' },
-] as const satisfies ReadonlyArray<{ id: RuleId; severity: Severity }>;
+  { id: 'no-source-no-mention', severity: 'high', affectedQuestions: 35 },
+  { id: 'visibility-declining', severity: 'high', affectedQuestions: 21 },
+  { id: 'weak-platform', severity: 'high', affectedQuestions: 13 },
+  { id: 'owned-source-share', severity: 'medium', affectedQuestions: 35 },
+  { id: 'mention-not-recommended', severity: 'medium', affectedQuestions: 29 },
+  { id: 'weak-topic', severity: 'medium', affectedQuestions: 7 },
+  { id: 'decision-tier-untracked', severity: 'low', affectedQuestions: 0 },
+] as const satisfies ReadonlyArray<{ id: RuleId; severity: Severity; affectedQuestions: number }>;
 
 /**
  * Every %-truth above, de-duplicated and ascending. Derived, never hand-listed, so it cannot drift from the table.
@@ -180,16 +184,17 @@ export const TRUTH_ACTION_CARDS = [
  */
 export const TRUTH_PCT_VALUES: readonly number[] = [
   ...new Set<number>([
-    TRUTH_FUNNEL.mentionRate,
-    TRUTH_FUNNEL.rateOfMentions,
-    TRUTH_FUNNEL.rateOfQuestions,
-    TRUTH_SOURCE_BACKED.pct,
-    TRUTH_OWNED_SHARE.pct,
-    ...TRUTH_PLATFORMS.flatMap((p) => [p.visibility, p.recommendationRate, p.sourceBackedRate]),
+    TRUTH_FUNNEL.mentions.rateOfAsked,
+    TRUTH_FUNNEL.mentions.rateOfPrevious,
+    TRUTH_FUNNEL.recommendations.rateOfAsked,
+    TRUTH_FUNNEL.recommendations.rateOfPrevious,
+    TRUTH_SOURCE_BACKED.rateOfMentioned,
+    TRUTH_OWNED_SHARE.shareOfCitations,
+    ...TRUTH_PLATFORMS.flatMap((p) => [p.visibility, p.recommendationRateOfAsked, p.sourceBackedRateOfMentioned]),
     TRUTH_PERIOD.first.pct,
     TRUTH_PERIOD.last.pct,
     ...TRUTH_TREND.rolling.map((w) => w.pct),
-    ...TRUTH_INTENTS.filter((t) => t.questions > 0).flatMap((t) => [t.mentionRate, t.recommendationRate]),
+    ...TRUTH_INTENTS.filter((t) => t.questions > 0).flatMap((t) => [t.visibility, t.recommendationRateOfAsked]),
     ...TRUTH_TOPICS.map((t) => t.visibility),
   ]),
 ].sort((a, b) => a - b);

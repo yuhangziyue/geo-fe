@@ -10,7 +10,7 @@ export type LlmProvider = 'anthropic' | 'mock';
  *   'ai' + LLM_PROVIDER=mock                  → mockProvider.summarize
  *   'ai' + anthropic + ANTHROPIC_API_KEY      → claude.summarize; timeout → template 'timeout'; error → template 'upstream_error'
  *   'ai' + anything else                      → buildTemplateSummary(facts, 'no_api_key')
- * AI output with verifiedBand 'partial' | 'none' keeps its text and gets reason 'low_verification'.
+ * AI / mock output is returned as is, whatever its verification band; the UI derives the badge from `verification.band`.
  */
 export async function dispatchSummary(mode: SummaryMode, facts: LlmFacts): Promise<LlmSummaryResult> {
   void mode;

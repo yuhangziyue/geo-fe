@@ -189,6 +189,16 @@ export const INTENT_LABELS: Record<IntentTier, { name: string; blurb: string; we
   C: { name: 'Awareness', blurb: 'Informational — explainers, when-to-use', weight: 1 },
 };
 
+/** Display order of the intent tiers: awareness → decision (05 §2.6). `SummaryV3DTO.intents` comes in this order. */
+export const INTENT_DISPLAY_ORDER = ['C', 'B', 'A', 'S'] as const satisfies ReadonlyArray<IntentTier>;
+
+/** ⓘ text wherever intent tiers are shown (05 §1). */
+export const INTENT_TIERS_DISCLAIMER =
+  'Intent tiers follow the common purchase-funnel convention (S decision · A evaluation · B solution · C awareness). The dataset labels tiers but does not define them.';
+
+/** Footnote of the sources card (05 §2.7, F4): source_type and "owned" are two different things. */
+export const SOURCE_TYPE_NOTE = `Source type is the dataset's label for the cited page; "owned" is decided by domain.`;
+
 /** F9: the owned domain is inferred, not given. Every owned-source metric / card / action card shows this text. */
 export const OWNED_DOMAIN_DISCLAIMER =
   'Owned = astervision.example (assumed; brand.json lists example.com/astervision).';
@@ -244,16 +254,29 @@ export function globalFilterHref(path: string, filter: GlobalFilter, extra: Reco
  */
 export type TopicScenarioMap = ReadonlyMap<string, ScenarioRef | null>;
 
-/** Funnel KPI: three nested steps + two side metrics. deltaPt = last 15 days − first 15 days; null when a half has n < 8. */
+/**
+ * One funnel step. Every rate names its denominator:
+ *   rateOfAsked    = value ÷ questions (Asked)
+ *   rateOfPrevious = value ÷ the previous step (for `mentions` the previous step IS Asked, so both are equal)
+ * deltaPt is the change of rateOfAsked: last 15 days − first 15 days, in pt; null when either half has n < 8.
+ */
+export interface FunnelStep {
+  value: number;
+  rateOfAsked: number;
+  rateOfPrevious: number;
+  deltaPt: number | null;
+}
+
+/** Funnel KPI: Asked → Mentioned → Recommended (nested) + two side metrics that are NOT nested (F6). */
 export interface FunnelKpi {
-  questions: { value: number; deltaPt: number | null };
-  /** rate = mentions / questions */
-  mentions: { value: number; rate: number; deltaPt: number | null };
-  recommendations: { value: number; rateOfMentions: number; rateOfQuestions: number; deltaPt: number | null };
-  /** cited questions / mentions */
-  sourceBackedRate: { value: number; deltaPt: number | null };
-  /** owned-domain citations / all citations */
-  ownedSourceShare: { value: number; deltaPt: number | null };
+  /** Asked. A count has no pt delta. */
+  questions: { value: number };
+  mentions: FunnelStep;
+  recommendations: FunnelStep;
+  /** questions with ≥ 1 citation ÷ mentions; deltaPt is the change of rateOfMentioned */
+  sourceBacked: { cited: number; rateOfMentioned: number; deltaPt: number | null };
+  /** owned-domain citations ÷ all citations; deltaPt is the change of shareOfCitations */
+  ownedSource: { owned: number; totalCitations: number; shareOfCitations: number; deltaPt: number | null };
 }
 
 export type MatrixState = 'recommended' | 'partly' | 'mentioned_only' | 'not_mentioned' | 'not_tracked';
@@ -279,23 +302,37 @@ export interface MatrixRow {
   /** always 5 cells, in PLATFORMS order */
   cells: MatrixCell[];
 }
+/**
+ * Question × platform matrix. RULE (I7): the matrix applies only the `topic` and `intent` filters and IGNORES
+ * `platform` — it always has the 5 PLATFORMS columns and `stateCounts` always counts all 5 columns, so "filtered
+ * out" never shows up as "not tracked". When a platform filter is set, `collapsedByDefault` is true: the UI starts
+ * collapsed with an expand button (and the 06 §5.2 hint), instead of drawing a one-column matrix.
+ */
 export interface MatrixDTO {
-  /** = PLATFORMS */
-  platforms: readonly string[];
+  /** = PLATFORMS, always all five */
+  platforms: readonly Platform[];
   /** all rows (32 on the full data), gapScore desc then question asc; the UI decides Top-12 / Show all */
   rows: MatrixRow[];
+  /** over the rows above × all 5 columns (topic / intent filtered, platform filter ignored) */
   stateCounts: Record<MatrixState, number>;
+  /** true iff the request had a platform filter */
+  collapsedByDefault: boolean;
 }
 
-/** Platform card, ratio version. */
+/** Platform card, ratio version. Counts are included for tooltips such as "25% (6/24)". */
 export interface PlatformRow {
-  name: string;
+  name: Platform;
   n: number;
-  /** mentions / n */
+  mentions: number;
+  recommendations: number;
+  /** questions with ≥ 1 citation */
+  cited: number;
+  /** mentions ÷ n */
   visibility: number;
-  recommendationRate: number;
-  /** cited / mentions */
-  sourceBackedRate: number;
+  /** recommendations ÷ n */
+  recommendationRateOfAsked: number;
+  /** cited ÷ mentions */
+  sourceBackedRateOfMentioned: number;
   isWorst: boolean;
 }
 
@@ -303,13 +340,13 @@ export interface PlatformRow {
 export interface TrendPoint {
   /** YYYY-MM-DD */
   date: string;
-  /** daily value: 0/25/50/75/100 on this data */
-  dailyVisibility: number;
-  /** 4 on this data */
+  /** mentions ÷ questions that day; null when the day has no question (e.g. under a filter) — draw no point */
+  dailyVisibility: number | null;
+  /** questions that day (4 on the unfiltered data, can be 0 under a filter) */
   dailyN: number;
-  /** null for the first 6 days (window not full) */
+  /** 7-day window ending this day; null for the first 6 days (window not full) and when the window has 0 questions */
   rollingVisibility: number | null;
-  /** questions in the window (28 when full) */
+  /** questions in the window (28 when full and unfiltered) */
   rollingN: number;
 }
 
@@ -318,9 +355,12 @@ export interface IntentRow {
   /** = INTENT_LABELS[tier].name */
   label: string;
   questions: number;
-  /** 0 when questions = 0 */
-  mentionRate: number;
-  recommendationRate: number;
+  mentions: number;
+  recommendations: number;
+  /** mentions ÷ questions; 0 when questions = 0 (do not draw it — see isEmpty) */
+  visibility: number;
+  /** recommendations ÷ questions; 0 when questions = 0 */
+  recommendationRateOfAsked: number;
   /** true when questions = 0 → the UI draws a "Not tracked" placeholder, not a 0% bar */
   isEmpty: boolean;
 }
@@ -329,9 +369,10 @@ export interface SourceStructure {
   /** source_type label distribution (Industry / Review / Media / Official), count desc */
   byType: Array<{ type: string; count: number }>;
   topDomains: Array<{ domain: string; count: number; owned: boolean }>;
-  ownedShare: { owned: number; total: number; pct: number };
-  /** non-zero platforms only */
-  ownedByPlatform: Array<{ platform: string; count: number }>;
+  /** owned-domain citations ÷ all citations */
+  ownedShare: { owned: number; totalCitations: number; shareOfCitations: number };
+  /** non-zero platforms only, count desc */
+  ownedByPlatform: Array<{ platform: Platform; count: number }>;
 }
 
 export interface TopicRow {
@@ -356,6 +397,7 @@ export interface SummaryV3DTO {
   platforms: PlatformRow[];
   trend: TrendPoint[];
   topics: TopicRow[];
+  /** always 4 rows, in INTENT_DISPLAY_ORDER (C, B, A, S) */
   intents: IntentRow[];
   sources: SourceStructure;
   matrix: MatrixDTO;
@@ -384,8 +426,8 @@ export interface Diagnosis {
   code: DiagnosisCode;
   title: string;
   action: string;
-  /** where to act in P2; null for healthy */
-  target: { label: string; href: string } | null;
+  /** where to act in P2; null for healthy. kind 'scenario' → the UI labels it "manual mapping" */
+  target: ActionTarget | null;
   /** e.g. "Answer tone is mixed" */
   extra?: string[];
 }
@@ -407,19 +449,44 @@ export type QuestionDetailV3Response =
 
 // Action center (05 §3)
 
-export type Severity = 'high' | 'medium' | 'low';
+/** Severity, most severe first. */
+export const SEVERITIES = ['high', 'medium', 'low'] as const;
+export type Severity = (typeof SEVERITIES)[number];
+
+/** One unit vocabulary for evidence numbers and for numbers extracted from a summary. */
+export type NumberUnit = 'pct' | 'pt' | 'count';
+
+/**
+ * A number shown as evidence. The frontend formats it from `unit` (pct → "46%", pt → "▼ 12 pt", count → "29"),
+ * so no number is ever baked into a string. `of` is an optional denominator count, e.g. 7 of 71 → "7/71".
+ */
 export interface EvidenceDatum {
   label: string;
-  value: string | number;
+  value: number;
+  unit: NumberUnit;
+  of?: number;
 }
-export type RuleId =
-  | 'no-source-no-mention'
-  | 'visibility-declining'
-  | 'weak-platform'
-  | 'mention-not-recommended'
-  | 'weak-topic'
-  | 'owned-source-share'
-  | 'decision-tier-untracked';
+
+/**
+ * Action rules (05 §3), in tie-break order. `affectedQuestions` per rule, over the filtered rows:
+ *   no-source-no-mention    — not mentioned AND no citation
+ *   visibility-declining    — not mentioned, dated in the last 15 days (PeriodHalves.last)
+ *   weak-platform           — not mentioned, on the weakest platform
+ *   mention-not-recommended — mentioned AND not recommended
+ *   weak-topic              — not mentioned, in the weakest topic
+ *   owned-source-share      — has citations, none of them on the owned domain
+ *   decision-tier-untracked — questions in tier S (0 whenever the rule fires)
+ */
+export const RULE_IDS = [
+  'no-source-no-mention',
+  'visibility-declining',
+  'weak-platform',
+  'mention-not-recommended',
+  'weak-topic',
+  'owned-source-share',
+  'decision-tier-untracked',
+] as const;
+export type RuleId = (typeof RULE_IDS)[number];
 /** Product-level target first; 'scenario' must be labelled "manual mapping" in the UI (06 §5.8). */
 export type TargetKind = 'product' | 'scenario' | 'generic';
 export interface ActionTarget {
@@ -430,6 +497,8 @@ export interface ActionTarget {
 export interface ActionCard {
   id: RuleId;
   severity: Severity;
+  /** impact, defined per rule on RULE_IDS; the second sort key */
+  affectedQuestions: number;
   finding: string;
   /** numbers live here, structured — the frontend renders them, it never interpolates them into text */
   evidence: EvidenceDatum[];
@@ -441,6 +510,15 @@ export interface ActionCard {
   disclaimer?: string;
 }
 
+/** The one card order (I5): severity, then affectedQuestions desc, then RULE_IDS order. Use with Array.sort. */
+export function compareActionCards(a: ActionCard, b: ActionCard): number {
+  return (
+    SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity) ||
+    b.affectedQuestions - a.affectedQuestions ||
+    RULE_IDS.indexOf(a.id) - RULE_IDS.indexOf(b.id)
+  );
+}
+
 /**
  * The only input the LLM ever sees (B2 brief §2): rule-engine facts, never raw questions.json rows.
  * Every number a summary may cite must be reachable from here — verify.ts flattens it to check them.
@@ -448,37 +526,67 @@ export interface ActionCard {
 export interface LlmFacts {
   brand: string;
   period: { from: string; to: string };
-  funnel: { questions: number; mentions: number; mentionRate: number; recommendations: number; recommendRate: number };
-  delta: { mentionsPt: number | null; firstN: number; lastN: number };
-  sources: { ownedShare: number; totalCitations: number };
+  /** Rates are pct; the suffix names the denominator (Asked = questions, Mentioned = mentions). */
+  funnel: {
+    questions: number;
+    mentions: number;
+    mentionRateOfAsked: number;
+    recommendations: number;
+    recommendRateOfAsked: number;
+    recommendRateOfMentioned: number;
+  };
+  /** change of mentionRateOfAsked, last 15 days − first 15 days, in pt; null when a half has n < 8 */
+  delta: { mentionRateOfAskedPt: number | null; firstN: number; lastN: number };
+  sources: { ownedShareOfCitations: number; totalCitations: number };
   /** from the already-sorted cards, first 5 */
   topFindings: Array<{ severity: Severity; finding: string; evidence: EvidenceDatum[] }>;
 }
 
+/** What the Generate button asks for. */
 export type SummaryMode = 'ai' | 'rules';
-export type NumberUnit = '%' | 'pt' | '';
+/** What actually produced the text (I4). The UI decides badges from this alone: Rules / AI summary · <model> / Mock LLM (demo). */
+export type SummaryResultMode = 'rules' | 'ai' | 'mock';
+
+/** A number found in the summary text. `raw` = text.slice(start, end); `end` is exclusive (I3). */
 export interface ExtractedNumber {
   raw: string;
   value: number;
   unit: NumberUnit;
+  start: number;
+  end: number;
 }
 export interface VerifiedNumber extends ExtractedNumber {
   verified: boolean;
   /** path of the matching fact in LlmFacts, e.g. "funnel.mentionRate" */
   matchedFact?: string;
 }
+/**
+ * Number check result (I2). band: total = 0 or verified = total → 'all'; verified / total < 0.5 → 'low';
+ * otherwise 'partial'. 'low' shows the low-verification badge; every unverified number is marked red in any band.
+ */
+export interface Verification {
+  verified: number;
+  total: number;
+  band: 'all' | 'partial' | 'low';
+}
+
+/** The I2 band rule, in one place. */
+export function verificationOf(verified: number, total: number): Verification {
+  const band = total === 0 || verified === total ? 'all' : verified / total < 0.5 ? 'low' : 'partial';
+  return { verified, total, band };
+}
+
 export interface LlmSummaryResult {
-  /** the mode actually used: a failed 'ai' request comes back as 'rules' with `reason` set */
-  mode: SummaryMode;
+  /** what produced the text: a failed 'ai' request comes back as 'rules' with `reason` set */
+  mode: SummaryResultMode;
   text: string;
+  /** in text order; the UI marks [start, end) of every unverified number */
   numbers: VerifiedNumber[];
-  /** e.g. "7/9"; "0/0" when the text has no numbers */
-  verifiedRatio: string;
-  /** ratio 1 → 'all'; 0 < ratio < 1 → 'partial'; 0 → 'none'; 0/0 → 'na' */
-  verifiedBand: 'all' | 'partial' | 'none' | 'na';
-  /** real model id in 'ai' mode ('mock-llm-v1' for the demo mock); null in 'rules' mode */
+  verification: Verification;
+  /** model id for display in 'ai' mode; the mock's id in 'mock' mode; null in 'rules' mode. Never compare it. */
   model: string | null;
-  reason?: 'no_api_key' | 'timeout' | 'upstream_error' | 'low_verification' | null;
+  /** why an 'ai' request fell back to 'rules'; null otherwise */
+  reason?: 'no_api_key' | 'timeout' | 'upstream_error' | null;
 }
 
 /** GET /api/dashboard/action-center/cards?platform&topic&intent — loaded with the page. */

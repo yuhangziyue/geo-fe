@@ -1,23 +1,32 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { buildActions, factsForLlm } from './insight';
-import { DEFAULT_ANTHROPIC_MODEL, LlmTimeoutError, isLlmEnabled, resolveModel, summarize } from './llm/claude';
+import { DEFAULT_MODEL, LlmTimeoutError, isLlmEnabled, resolveModel, summarize } from './llm/claude';
 import { dispatchSummary } from './llm/dispatcher';
-import { MOCK_MODEL_ID, summarize as mockSummarize } from './llm/mockProvider';
+import { summarize as mockSummarize } from './llm/mockProvider';
 import { buildUserPrompt, SYSTEM_PROMPT } from './llm/prompts';
 import { buildTemplateSummary } from './llm/template';
 import { extractNumbers, verifyAgainstFacts } from './llm/verify';
 import type {
   ActionCard,
+  ActionTarget,
+  Diagnosis,
+  EvidenceDatum,
   ExtractedNumber,
   FunnelKpi,
   GlobalFilter,
   LlmFacts,
   LlmSummaryResult,
+  MatrixDTO,
+  NumberUnit,
   PeriodHalves,
+  Platform,
+  PlatformRow,
   Question,
   SummaryMode,
   SummaryV3DTO,
   TopicScenarioMap,
+  TrendPoint,
+  Verification,
 } from './schema';
 
 /*
@@ -43,9 +52,7 @@ describe('T0 signatures', () => {
     expectTypeOf(extractNumbers).parameters.toEqualTypeOf<[string]>();
     expectTypeOf(extractNumbers).returns.toEqualTypeOf<ExtractedNumber[]>();
     expectTypeOf(verifyAgainstFacts).parameters.toEqualTypeOf<[ExtractedNumber[], LlmFacts]>();
-    expectTypeOf(verifyAgainstFacts).returns.toEqualTypeOf<
-      Pick<LlmSummaryResult, 'numbers' | 'verifiedRatio' | 'verifiedBand'>
-    >();
+    expectTypeOf(verifyAgainstFacts).returns.toEqualTypeOf<Pick<LlmSummaryResult, 'numbers' | 'verification'>>();
     expectTypeOf(dispatchSummary).parameters.toEqualTypeOf<[SummaryMode, LlmFacts]>();
     expectTypeOf(dispatchSummary).returns.toEqualTypeOf<Promise<LlmSummaryResult>>();
     expectTypeOf(mockSummarize).parameters.toEqualTypeOf<[LlmFacts]>();
@@ -54,33 +61,54 @@ describe('T0 signatures', () => {
     expectTypeOf(SYSTEM_PROMPT).toEqualTypeOf<string>();
   });
 
-  it('TopicScenarioMap can be empty (mapping file deleted) and holds null for "deliberately no scenario"', () => {
-    const empty: TopicScenarioMap = new Map();
-    expect(empty.size).toBe(0);
-    const curated: TopicScenarioMap = new Map([
-      ['Office Security', { slug: 'office', name: 'Office' }],
-      ['Product Comparison', null],
-    ]);
-    expect(curated.get('Office Security')?.slug).toBe('office');
-    expect(curated.get('Product Comparison')).toBeNull();
-    expect(curated.has('Unknown topic')).toBe(false);
+  it('review round 1 shapes (C1, C2, I2–I8)', () => {
+    // C1: the diagnosis target says what kind of link it is ("manual mapping" for scenarios).
+    expectTypeOf<Diagnosis['target']>().toEqualTypeOf<ActionTarget | null>();
+    // C2: evidence numbers carry a unit; one unit vocabulary for evidence and extracted numbers.
+    expectTypeOf<EvidenceDatum['unit']>().toEqualTypeOf<NumberUnit>();
+    expectTypeOf<NumberUnit>().toEqualTypeOf<'pct' | 'pt' | 'count'>();
+    // I2: numeric verification with one band rule.
+    expectTypeOf<LlmSummaryResult['verification']>().toEqualTypeOf<Verification>();
+    expectTypeOf<Verification['band']>().toEqualTypeOf<'all' | 'partial' | 'low'>();
+    // I3: offsets into the summary text.
+    expectTypeOf<ExtractedNumber>().toHaveProperty('start').toEqualTypeOf<number>();
+    expectTypeOf<ExtractedNumber>().toHaveProperty('end').toEqualTypeOf<number>();
+    // I4: the result mode names the source; the request mode stays ai | rules.
+    expectTypeOf<LlmSummaryResult['mode']>().toEqualTypeOf<'rules' | 'ai' | 'mock'>();
+    expectTypeOf<SummaryMode>().toEqualTypeOf<'ai' | 'rules'>();
+    // I5: cards carry their impact.
+    expectTypeOf<ActionCard['affectedQuestions']>().toEqualTypeOf<number>();
+    // I6: empty days / windows are null, not 0 %.
+    expectTypeOf<TrendPoint['dailyVisibility']>().toEqualTypeOf<number | null>();
+    expectTypeOf<TrendPoint['rollingVisibility']>().toEqualTypeOf<number | null>();
+    // I7: the matrix ignores the platform filter and says whether to start collapsed.
+    expectTypeOf<MatrixDTO['collapsedByDefault']>().toEqualTypeOf<boolean>();
+    expectTypeOf<MatrixDTO['platforms']>().toEqualTypeOf<readonly Platform[]>();
+    // I8: every funnel rate names its denominator; deltaPt belongs to rateOfAsked.
+    expectTypeOf<FunnelKpi['mentions']>().toEqualTypeOf<{ value: number; rateOfAsked: number; rateOfPrevious: number; deltaPt: number | null }>();
+    expectTypeOf<FunnelKpi['recommendations']>().toEqualTypeOf<FunnelKpi['mentions']>();
+    expectTypeOf<FunnelKpi['questions']>().toEqualTypeOf<{ value: number }>();
+    expectTypeOf<LlmFacts['funnel']>().toHaveProperty('recommendRateOfAsked').toEqualTypeOf<number>();
+    expectTypeOf<PlatformRow['name']>().toEqualTypeOf<Platform>();
+  });
+
+  it('TopicScenarioMap accepts an empty Map (mapping file deleted)', () => {
+    expectTypeOf<Map<string, never>>().toMatchTypeOf<TopicScenarioMap>();
   });
 
   it('periodHalves has one named type', () => {
     expectTypeOf<SummaryV3DTO['periodHalves']>().toEqualTypeOf<PeriodHalves>();
-    expectTypeOf<FunnelKpi['mentions']['deltaPt']>().toEqualTypeOf<number | null>();
   });
 });
 
 describe('llm/claude.ts: model and key (implemented in T0)', () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it('defaults to claude-opus-5-5, overridable by ANTHROPIC_MODEL', () => {
-    expect(DEFAULT_ANTHROPIC_MODEL).toBe('claude-opus-5-5');
+  it('falls back to DEFAULT_MODEL when ANTHROPIC_MODEL is unset or empty, and honours an override', () => {
     vi.stubEnv('ANTHROPIC_MODEL', '');
-    expect(resolveModel()).toBe(DEFAULT_ANTHROPIC_MODEL);
-    vi.stubEnv('ANTHROPIC_MODEL', 'some-other-model');
-    expect(resolveModel()).toBe('some-other-model');
+    expect(resolveModel()).toBe(DEFAULT_MODEL);
+    vi.stubEnv('ANTHROPIC_MODEL', 'override-model');
+    expect(resolveModel()).toBe('override-model');
   });
 
   it('is enabled only with an API key', () => {
@@ -94,9 +122,5 @@ describe('llm/claude.ts: model and key (implemented in T0)', () => {
     const e = new LlmTimeoutError(15_000);
     expect(e).toBeInstanceOf(Error);
     expect(e.name).toBe('LlmTimeoutError');
-  });
-
-  it('names the mock model', () => {
-    expect(MOCK_MODEL_ID).toBe('mock-llm-v1');
   });
 });

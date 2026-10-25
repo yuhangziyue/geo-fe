@@ -6,9 +6,15 @@ import {
   OWNED_DOMAIN,
   OWNED_DOMAIN_DISCLAIMER,
   QuestionQueryV3Schema,
+  INTENT_DISPLAY_ORDER,
+  INTENT_TIERS_DISCLAIMER,
+  RULE_IDS,
   SummaryRequestSchema,
+  compareActionCards,
   globalFilterHref,
   parseGlobalFilter,
+  verificationOf,
+  type ActionCard,
 } from './schema';
 
 // v3 contract (T0). Owner: T0 — sub-tasks import these, they do not edit them.
@@ -105,5 +111,65 @@ describe('globalFilterHref (filter → drill-down link)', () => {
     const filter = { platform: 'Perplexity', topic: 'Low-light Imaging', intent: 'C' } as const;
     const href = globalFilterHref('/dashboard', filter);
     expect(parseGlobalFilter(new URL(href, 'http://x').searchParams)).toEqual(filter);
+  });
+});
+
+describe('intent display order and ⓘ text', () => {
+  it('displays tiers awareness → decision (C, B, A, S), the reverse of INTENTS', () => {
+    expect(INTENT_DISPLAY_ORDER).toEqual([...INTENTS].reverse());
+  });
+
+  it('states the intent-tier convention once (05 §1)', () => {
+    expect(INTENT_TIERS_DISCLAIMER).toBe(
+      'Intent tiers follow the common purchase-funnel convention (S decision · A evaluation · B solution · C awareness). The dataset labels tiers but does not define them.',
+    );
+  });
+});
+
+describe('verificationOf (I2 ruling)', () => {
+  it("is 'all' when every number checks out, or when there is no number at all", () => {
+    expect(verificationOf(3, 3)).toEqual({ verified: 3, total: 3, band: 'all' });
+    expect(verificationOf(0, 0)).toEqual({ verified: 0, total: 0, band: 'all' });
+  });
+
+  it("is 'low' below 50 % verified", () => {
+    expect(verificationOf(1, 3).band).toBe('low');
+    expect(verificationOf(0, 2).band).toBe('low');
+  });
+
+  it("is 'partial' from 50 % up to, not including, 100 %", () => {
+    expect(verificationOf(1, 2).band).toBe('partial');
+    expect(verificationOf(5, 6).band).toBe('partial');
+  });
+});
+
+describe('compareActionCards (I5 ruling)', () => {
+  const card = (id: ActionCard['id'], severity: ActionCard['severity'], affectedQuestions: number): ActionCard => ({
+    id,
+    severity,
+    affectedQuestions,
+    finding: '',
+    evidence: [],
+    action: '',
+    evidenceHref: '/dashboard/questions',
+    target: null,
+  });
+
+  it('sorts by severity, then affectedQuestions desc, then RULE_IDS order', () => {
+    const cards = [
+      card('decision-tier-untracked', 'low', 50),
+      card('weak-topic', 'medium', 7),
+      card('mention-not-recommended', 'medium', 29),
+      card('owned-source-share', 'medium', 29),
+      card('weak-platform', 'high', 1),
+    ];
+    expect([...cards].sort(compareActionCards).map((c) => c.id)).toEqual([
+      'weak-platform',
+      'mention-not-recommended',
+      'owned-source-share',
+      'weak-topic',
+      'decision-tier-untracked',
+    ]);
+    expect(RULE_IDS.indexOf('mention-not-recommended')).toBeLessThan(RULE_IDS.indexOf('owned-source-share'));
   });
 });

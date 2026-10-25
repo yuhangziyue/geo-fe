@@ -22,9 +22,8 @@ interface FilterBarProps {
  */
 export function FilterBar({ facets, showIntent = true, className = '' }: FilterBarProps) {
   const { filter, setFilter, reset } = useGlobalFilter();
-  const active = (showIntent ? (['platform', 'topic', 'intent'] as const) : (['platform', 'topic'] as const)).filter(
-    (key) => filter[key] !== undefined,
-  ).length;
+  // Counts every filter in the URL, shown or not: reset clears them all, so "Clear all" must appear whenever one is set.
+  const active = Object.values(filter).filter((v) => v !== undefined).length;
 
   const topics = facets?.topics ?? (filter.topic ? [filter.topic] : []);
   const platforms = facets?.platforms ?? PLATFORMS;

@@ -24,7 +24,7 @@ pnpm dev          # 自动 seed SQLite 后启动 http://localhost:3000
 |---|---|
 | `pnpm dev` | 开发模式。先把 `data/` 里的 JSON 导入 SQLite（`.local/geo.db`），再起 Next.js |
 | `pnpm demo` | seed → `next build` → `next start`。**演示「后台改内容 → 静态页与 JSON-LD 同步更新」请用这个**：dev 模式每次请求都现场渲染，看不出按需重新生成是否生效 |
-| `pnpm test` | 后端单测（Vitest，57 条） |
+| `pnpm test` | 后端单测（Vitest，59 条） |
 | `pnpm typecheck` | 前端 `tsc --noEmit` |
 | `pnpm lint` | ESLint（`next/core-web-vitals` + `next/typescript`），零警告才通过 |
 | `pnpm e2e` | Playwright 冒烟测试（6 条）。自带生产构建，用独立的端口 3100、构建目录 `.next-e2e` 和数据库 `.local/e2e.db`，不影响正在跑的 `pnpm dev`。首次需 `pnpm exec playwright install chromium` |
@@ -135,7 +135,7 @@ erDiagram
 - Visibility = 被提及的问题数 ÷ 问题数，即提及率，页面上直接写明；Citations 71 是引用**条数**，另外标出只有 42 个问题有引用（35%）。
 - 取整用「四舍六入五成双」：Claude 15/24 = 62.5，出题方汇总是 62。用 JS `Math.round` 会得到 63，单测对出题方汇总逐项比对时发现。
 - 行是观测，内容按 Prompt 改，所以另算 **Prompt 覆盖率**（每次观测都提到品牌的 Prompt 数：32 个里 9 个），「最该优化」按 Prompt 去重、按最差一次观测排序，而不是按行。
-- **自有来源按域名判定，不看 `source_type = Official`**：13 条 Official 引用里只有 1 条在 `astervision.example` 上；7 条自有域名引用分散在 Industry / Review / Media。Official 是数据方的来源类别，「是否自有」要另算，混用会把自有占比算错。
+- **自有来源按域名判定，不看 `source_type = Official`**：13 条 Official 引用里只有 1 条在 `astervision.example` 上；7 条自有域名引用里 Industry 3、Review 2、Media 1、Official 1。Official 是数据方的来源类别，「是否自有」要另算，混用会把自有占比算错。
 - 意图类型（`intent_type`）进入筛选、分组和 Insight（A 类 60 题、提及率 65%，最低）。数据说明写的是 S/A/B/C，但本期没有 S 类，页面如实标注；数据没定义各类含义，所以只报差异，不解释原因。
 - 反方：数据量小，直接读 summary 更省事。但数据源一旦换成真实明细，接口不用改。
 - 何时换：明细到百万行以上时，改为在数据库或 OLAP 里按天、平台、Topic 预聚合，接口契约不变。
@@ -183,6 +183,8 @@ erDiagram
 | 方案与计划 | 先写任务拆解与实现计划（接口签名、测试真值、文件归属），再动手 | 单服务还是前后端两进程、SQLite 还是 JSON、规则还是 LLM 等取舍 |
 | 实现 | 骨架自己搭；P1、P2 分给两个 AI 子代理并行实现，各自只能改自己名下的目录 | 每个模块先写失败测试，断言值是人工核过的真值（71 / 85 / 56、DeepSeek 46 等） |
 | 验收 | 跑测试、类型检查、生产构建；用无头浏览器逐页点击、截图 | 不以「AI 说做完了」为准，以实测为准 |
+
+提交后的三轮改进（前端工程、数据建模、质量设施）各有一份设计与实施计划，见 [docs/superpowers/](docs/superpowers/)。这些文档是**执行后补写**的（开头均有注明），随后由独立审查者逐条对照代码复核，发现的问题与修复记录在质量设施设计文档末尾。
 
 **AI 出过的错，以及怎么发现的：**
 1. **JSON-LD 漏了 Key features**：AI 写的 Product 结构化数据只放了规格。生产模式下实测「后台改一条 Feature」时发现页面变了、JSON-LD 没变。先补失败测试，再修。

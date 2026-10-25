@@ -45,7 +45,7 @@ export function Overview() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{data?.brand ?? 'AsterVision'} · AI Visibility</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className={`mt-1 text-sm text-slate-500 ${summary.refreshing ? 'opacity-50' : ''}`}>
             How AI assistants mention, recommend and cite the brand{data ? ` · ${data.period.replace('~', ' – ')}` : ''}
           </p>
         </div>
@@ -101,7 +101,8 @@ export function Overview() {
             )}
           </AsyncState>
           {weakestTopic && (
-            <p className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-600">
+            // Outside AsyncState, so it dims itself: never show the previous selection's value as current.
+            <p className={`mt-3 border-t border-slate-100 pt-3 text-sm text-slate-600 ${summary.refreshing ? 'opacity-50' : ''}`}>
               Weakest: <span className="font-medium text-slate-800">{weakestTopic.topic}</span>
               {' · '}
               {weakestTopic.scenario ? (

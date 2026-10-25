@@ -8,7 +8,8 @@ const env = `GEO_DB_FILE=${path.resolve('.local/e2e.db')} NEXT_DIST_DIR=.next-e2
 
 export default defineConfig({
   testDir: 'e2e',
-  fullyParallel: false, // one shared database; the admin test writes to it
+  // One shared database and the admin test writes to it: run files one at a time (fullyParallel alone does not).
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure' },
@@ -17,6 +18,7 @@ export default defineConfig({
     command: `${env} pnpm seed && ${env} pnpm --filter frontend build && ${env} pnpm --filter frontend exec next start -p ${PORT}`,
     url: `http://localhost:${PORT}/products`,
     timeout: 240_000,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse: a server already on 3100 would skip the fresh seed and build and test stale code.
+    reuseExistingServer: false,
   },
 });

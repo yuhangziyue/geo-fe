@@ -28,6 +28,13 @@ function queryObject(url: URL): Record<string, string> {
   return out;
 }
 
+/** Topics come from the data, so the schema cannot enumerate them: check against the full dataset here. */
+function unknownTopic(topic: string | undefined): Response | null {
+  const topics = loadFacets().topics;
+  if (!topic || topics.includes(topic)) return null;
+  return problem(400, 'Invalid parameters', `topic: unknown value "${topic}"; expected one of ${topics.join(', ')}`);
+}
+
 function invalid(err: z.ZodError): Response {
   const detail = err.issues.map((i) => `${i.path.join('.') || 'query'}: ${i.message}`).join('; ');
   return problem(400, 'Invalid parameters', detail);
@@ -65,6 +72,8 @@ export const getSummary = withSimulate(
   async (req) => {
     const parsed = SummaryFilterSchema.safeParse(queryObject(new URL(req.url)));
     if (!parsed.success) return invalid(parsed.error);
+    const badTopic = unknownTopic(parsed.data.topic);
+    if (badTopic) return badTopic;
     return json({ ...computeSummary(loadQuestions(), parsed.data), facets: loadFacets() } satisfies SummaryResponse);
   },
 );
@@ -81,6 +90,8 @@ export const listQuestions = withSimulate(
   async (req) => {
     const parsed = QuestionQuerySchema.safeParse(queryObject(new URL(req.url)));
     if (!parsed.success) return invalid(parsed.error);
+    const badTopic = unknownTopic(parsed.data.topic);
+    if (badTopic) return badTopic;
     const f = parsed.data;
     const rows = applyFilter(loadQuestions(), f).filter(
       (q) =>
@@ -161,6 +172,8 @@ export const postInsight = withSimulate(
     }
     const parsed = InsightBodySchema.safeParse(body);
     if (!parsed.success) return invalid(parsed.error);
+    const badTopic = unknownTopic(parsed.data.topic);
+    if (badTopic) return badTopic;
     return json({ insights: buildInsights(loadQuestions(), parsed.data) } satisfies InsightResponse);
   },
 );

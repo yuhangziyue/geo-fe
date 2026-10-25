@@ -26,6 +26,9 @@ function groupMetrics(rows: Question[], key: (q: Question) => string) {
   return [...groups.entries()].map(([name, qs]) => ({ name, ...metricRow(qs) }));
 }
 
+/** A "weakest topic / intent" claim needs at least this many questions behind it; 0 of 1 is noise, not a finding. */
+const MIN_GROUP = 3;
+
 /** Rule-based insights: every sentence is backed by a number recomputed from questions.json. */
 export function buildInsights(questions: Question[], filter: SummaryFilter): Insight[] {
   const rows = applyFilter(questions, filter);
@@ -35,17 +38,19 @@ export function buildInsights(questions: Question[], filter: SummaryFilter): Ins
   const topics = groupMetrics(rows, (q) => q.topic);
   const out: Insight[] = [];
 
+  // Ranking platforms needs at least two; with one selected, "weakest" and "highest" would name the same one.
+  const comparePlatforms = platforms.length >= 2;
   const weakP = [...platforms].sort((a, b) => a.visibility - b.visibility)[0];
-  out.push({
+  if (comparePlatforms) out.push({
     id: 'weak-platform',
     title: `${weakP.name} is the weakest platform`,
     detail: `${weakP.name} mentions the brand in ${weakP.visibility}% of answers (${weakP.mentions}/${weakP.questions}), against ${all.visibility}% overall. Review the questions where it left the brand out.`,
     evidenceHref: href(filter, { platform: weakP.name, mentioned: 'false' }),
   });
 
-  const weakT = [...topics].sort((a, b) => a.visibility - b.visibility)[0];
-  const scenario = topicScenario(weakT.name);
-  out.push({
+  const weakT = topics.filter((t) => t.questions >= MIN_GROUP).sort((a, b) => a.visibility - b.visibility)[0];
+  const scenario = weakT ? topicScenario(weakT.name) : null;
+  if (weakT) out.push({
     id: 'weak-topic',
     title: `${weakT.name} is the weakest topic`,
     detail: `Visibility on ${weakT.name} is ${weakT.visibility}% with only ${weakT.recommendations} recommendations out of ${weakT.questions} questions. ${
@@ -58,7 +63,7 @@ export function buildInsights(questions: Question[], filter: SummaryFilter): Ins
   });
 
   // Intent types are dataset labels without a definition: report the gap, do not explain it.
-  const intents = groupMetrics(rows, (q) => q.intent_type);
+  const intents = groupMetrics(rows, (q) => q.intent_type).filter((i) => i.questions >= MIN_GROUP);
   if (intents.length > 1) {
     const weakI = [...intents].sort((a, b) => a.visibility - b.visibility || a.name.localeCompare(b.name))[0];
     out.push({
@@ -78,7 +83,7 @@ export function buildInsights(questions: Question[], filter: SummaryFilter): Ins
   });
 
   const topP = [...platforms].sort((a, b) => b.visibility - a.visibility || a.citations - b.citations)[0];
-  out.push({
+  if (comparePlatforms) out.push({
     id: 'mentioned-not-cited',
     title: `${topP.name} mentions the brand but rarely cites sources`,
     detail: `${topP.name} has the highest visibility (${topP.visibility}%) yet only ${topP.citations} citations across ${topP.questions} questions. Answers there are not grounded in linkable content.`,

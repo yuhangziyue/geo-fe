@@ -49,7 +49,7 @@ const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
 export const SummaryFilterSchema = z.object({
   platform: z.enum(PLATFORMS).optional(),
   topic: z.string().min(1).optional(),
-  intent: z.string().min(1).optional(),
+  intent: z.enum(DOCUMENTED_INTENTS).optional(),
   from: isoDate.optional(),
   to: isoDate.optional(),
 });
@@ -58,7 +58,7 @@ export type SummaryFilter = z.infer<typeof SummaryFilterSchema>;
 export const QuestionQuerySchema = z.object({
   platform: z.enum(PLATFORMS).optional(),
   topic: z.string().min(1).optional(),
-  intent: z.string().min(1).optional(),
+  intent: z.enum(DOCUMENTED_INTENTS).optional(),
   mentioned: bool.optional(),
   recommended: bool.optional(),
   q: z.string().trim().max(200).optional(),
@@ -70,7 +70,7 @@ export type QuestionQuery = z.infer<typeof QuestionQuerySchema>;
 export const InsightBodySchema = z.object({
   platform: z.enum(PLATFORMS).optional(),
   topic: z.string().min(1).optional(),
-  intent: z.string().min(1).optional(),
+  intent: z.enum(DOCUMENTED_INTENTS).optional(),
 });
 
 export interface MetricRow {

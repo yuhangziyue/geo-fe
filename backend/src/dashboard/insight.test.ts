@@ -34,6 +34,18 @@ describe('buildInsights', () => {
     expect(byId['weak-intent'].evidenceHref).toContain('intent=A');
   });
 
+  it('does not compare platforms when only one is selected, and ignores tiny groups', () => {
+    const one = buildInsights(questions, { platform: 'DeepSeek' });
+    const ids = one.map((i) => i.id);
+    // With one platform there is nothing to rank: "weakest" and "highest" would both name DeepSeek.
+    expect(ids).not.toContain('weak-platform');
+    expect(ids).not.toContain('mentioned-not-cited');
+    // Product Comparison has 1 DeepSeek question: too small to call "the weakest topic".
+    const weakTopic = one.find((i) => i.id === 'weak-topic');
+    expect(weakTopic?.title).not.toContain('Product Comparison');
+    expect(weakTopic?.detail).toMatch(/out of ([3-9]|\d{2,}) questions/);
+  });
+
   it('points the weak topic to the Knowledge Center page to improve', () => {
     expect(byId['weak-topic'].action).toEqual({ label: 'Open the Office scenario page', href: '/scenarios/office' });
   });

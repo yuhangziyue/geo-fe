@@ -43,6 +43,20 @@ describe('dashboard http handlers', () => {
     for (const r of body.otherRuns) expect(r.id).not.toBe(1);
   });
 
+  it('rejects unknown intent and topic values with 400, like an unknown platform', async () => {
+    for (const path of [
+      '/api/dashboard/questions?intent=Z',
+      '/api/dashboard/questions?topic=Nope',
+      '/api/dashboard/summary?intent=Z',
+      '/api/dashboard/summary?topic=Nope',
+    ]) {
+      const res = path.includes('summary') ? await getSummary(get(path)) : await listQuestions(get(path));
+      expect(res.status, path).toBe(400);
+    }
+    const insight = await postInsight(new Request('http://localhost/api/dashboard/insight', { method: 'POST', body: '{"topic":"Nope"}' }));
+    expect(insight.status).toBe(400);
+  });
+
   it('filters questions by intent and exposes intents as facets', async () => {
     const body = await (await listQuestions(get('/api/dashboard/questions?intent=A'))).json();
     expect(body.total).toBe(60);

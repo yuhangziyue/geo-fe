@@ -1,12 +1,12 @@
 import { Suspense } from 'react';
-import { QuestionsExplorer } from '@/components/dashboard/QuestionsExplorer';
+import { QuestionsTable } from '@/components/dashboard/list/QuestionsTable';
 
 export const metadata = { title: 'Questions' };
 
 export default function QuestionsPage() {
   return (
     <Suspense>
-      <QuestionsExplorer />
+      <QuestionsTable />
     </Suspense>
   );
 }

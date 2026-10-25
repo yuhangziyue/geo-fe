@@ -26,7 +26,7 @@ export function CrossPlatform({
         <h2 id="cross-title" className="text-base font-semibold text-ink">
           Across platforms
         </h2>
-        <p className="mt-0.5 text-sm text-ink-tertiary">Every run of this question, side by side</p>
+        <p className="mt-0.5 text-sm text-ink-tertiary">Answer excerpts from every run of this question, side by side</p>
       </header>
       {platforms.length === 1 && (
         <p className="mb-4 text-sm text-ink-secondary">This question was only asked on {platforms[0]}.</p>
@@ -46,10 +46,9 @@ function RunColumn({ run, current, href }: { run: Run; current: boolean; href: s
   const body = (
     <>
       <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-ink">{run.platform}</p>
-          <p className="text-xs text-ink-tertiary tabular-nums">{run.date}</p>
-        </div>
+        <p className="min-w-0 text-xs text-ink-tertiary">
+          {run.platform} · <span className="tabular-nums">{run.date}</span>
+        </p>
         <CoverageSwatch cell={runCellOf(run)} platform={run.platform} size="sm" />
       </div>
       <p className="mt-2 line-clamp-3 text-sm text-ink-secondary">{run.answer_excerpt}</p>

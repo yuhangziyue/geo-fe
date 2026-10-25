@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { AsyncState } from '../AsyncState';
 import type { QuestionDetailV3, QuestionDetailV3Response } from '../types';
 import { useApi, withSimulate } from '../useApi';
+import { readListParams } from '../list/listParams';
 import { useGlobalFilter } from '../useGlobalFilter';
 import { AnswerCard } from './AnswerCard';
 import { cellOf } from './coverage';
@@ -14,14 +15,18 @@ import { IntentBadge } from './marks';
 
 /** Question detail (05 §2.8): diagnosis card → this run's answer → every run side by side. */
 export function QuestionDetail({ id }: { id: string }) {
-  const simulate = useSearchParams().get('simulate');
+  const search = useSearchParams();
+  const simulate = search.get('simulate');
   const { buildHref } = useGlobalFilter();
+  // mentioned / recommended / q / page came with us from the list; hand them back on every link out of here.
+  const listParams = readListParams(search);
+  const listHref = buildHref('/dashboard/questions', listParams);
   const detail = useApi<QuestionDetailV3Response>(withSimulate(`/api/dashboard/questions/${id}`, simulate));
   const d = detail.data;
 
   return (
     <div className="space-y-8">
-      <Link href={buildHref('/dashboard/questions')} className="focus-ring rounded-md text-sm text-ink-secondary hover:text-ink">
+      <Link href={listHref} className="focus-ring rounded-md text-sm text-ink-secondary hover:text-ink">
         ← All questions
       </Link>
       {detail.status === 'loading' ? (
@@ -39,9 +44,19 @@ export function QuestionDetail({ id }: { id: string }) {
           onRetry={detail.retry}
           refreshing={detail.refreshing}
           isEmpty={!!d && d.question === null}
-          empty={<p>No data for this question.</p>}
+          empty={
+            <>
+              <p>No data for this question.</p>
+              <Link
+                href={listHref}
+                className="focus-ring mt-2 inline-flex h-9 items-center rounded-md border border-line-strong bg-surface-card px-3 text-sm font-medium text-ink hover:bg-surface-sunken"
+              >
+                Back to questions
+              </Link>
+            </>
+          }
         >
-          {() => <Loaded data={d as QuestionDetailV3} hrefFor={(runId) => buildHref(`/dashboard/questions/${runId}`)} />}
+          {() => <Loaded data={d as QuestionDetailV3} hrefFor={(runId) => buildHref(`/dashboard/questions/${runId}`, listParams)} />}
         </AsyncState>
       )}
     </div>

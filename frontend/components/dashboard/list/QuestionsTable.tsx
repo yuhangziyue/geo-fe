@@ -9,10 +9,8 @@ import { FilterBar } from '../FilterBar';
 import { INTENT_LABELS, INTENT_TIERS_DISCLAIMER, INTENTS, type IntentTier, type Question, type QuestionPage } from '../types';
 import { useApi } from '../useApi';
 import { useGlobalFilter } from '../useGlobalFilter';
+import { readListParams, type ListParamKey } from './listParams';
 
-/** List-only URL keys. platform / topic / intent belong to the global filter (useGlobalFilter). */
-const LIST_KEYS = ['mentioned', 'recommended', 'q'] as const;
-type ListKey = (typeof LIST_KEYS)[number];
 
 const controlCls =
   'h-9 w-full rounded-md border bg-surface-card px-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand';
@@ -31,24 +29,24 @@ export function QuestionsTable() {
   const search = useSearchParams();
   const { filter, buildHref } = useGlobalFilter();
 
-  const listParams: Partial<Record<ListKey, string>> = {};
-  for (const key of LIST_KEYS) {
-    const value = search.get(key);
-    if (value) listParams[key] = value;
-  }
-  const page = search.get('page');
+  // mentioned / recommended / q / page — list-only, carried to the detail page and back.
+  const listParams = readListParams(search);
+  const listFilters: Record<string, string> = { ...listParams };
+  delete listFilters.page;
 
-  const apiHref = buildHref('/api/dashboard/questions', { ...(listParams as Record<string, string>), ...(page ? { page } : {}) });
+  const apiHref = buildHref('/api/dashboard/questions', listParams);
   const list = useApi<QuestionPage>(apiHref);
   const data = list.data;
 
   // Keyword is typed locally and committed to the URL on submit.
-  const [keyword, setKeyword] = useState(listParams.q ?? '');
-  useEffect(() => setKeyword(search.get('q') ?? ''), [search]);
+  // Re-sync only when the committed keyword changes, so changing another filter keeps an unsubmitted draft.
+  const committedQ = listParams.q ?? '';
+  const [keyword, setKeyword] = useState(committedQ);
+  useEffect(() => setKeyword(committedQ), [committedQ]);
 
   /** Sets list-only keys; keeps the global filter + simulate; a list change restarts from page 1 unless it is `page`. */
-  const setList = (patch: Partial<Record<ListKey | 'page', string>>) => {
-    const next: Record<string, string> = { ...(listParams as Record<string, string>) };
+  const setList = (patch: Partial<Record<ListParamKey, string>>) => {
+    const next: Record<string, string> = { ...listFilters };
     for (const [k, v] of Object.entries(patch)) {
       if (v) next[k] = v;
       else delete next[k];
@@ -61,9 +59,9 @@ export function QuestionsTable() {
     router.push(sim ? `${pathname}?simulate=${encodeURIComponent(sim)}` : pathname, { scroll: false });
   };
 
-  const hasFilters = Object.values(filter).some(Boolean) || Object.keys(listParams).length > 0;
+  const hasFilters = Object.values(filter).some(Boolean) || Object.keys(listFilters).length > 0;
   const pages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
-  const detailHref = (id: number) => buildHref(`/dashboard/questions/${id}`);
+  const detailHref = (id: number) => buildHref(`/dashboard/questions/${id}`, listParams);
 
   return (
     <div className="space-y-6">
@@ -169,8 +167,11 @@ function YesNo({ ok }: { ok: boolean }) {
 function IntentCell({ intent }: { intent: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <IntentBadge intent={intent} />
-      <span className="text-xs text-ink-secondary">{isTier(intent) ? INTENT_LABELS[intent].name : intent}</span>
+      <IntentBadge intent={intent} decorative />
+      <span className="text-xs text-ink-secondary">
+        <span className="sr-only">Intent {intent} · </span>
+        {isTier(intent) ? INTENT_LABELS[intent].name : intent}
+      </span>
     </span>
   );
 }

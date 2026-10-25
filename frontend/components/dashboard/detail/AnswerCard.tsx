@@ -48,10 +48,10 @@ export function AnswerCard({
       <header className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 id="answer-title" className="text-base font-semibold text-ink">
-            Answer on {q.platform}
+            Answer excerpt
           </h2>
           <p className="mt-0.5 text-sm text-ink-tertiary">
-            {q.date} · tone {q.sentiment} · the dataset keeps an excerpt, not the full answer
+            {q.platform} · {q.date} · tone {q.sentiment} · the dataset keeps an excerpt, not the full answer
           </p>
         </div>
         {current && (

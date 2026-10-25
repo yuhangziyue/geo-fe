@@ -3,8 +3,10 @@ import type { ActionTarget, Diagnosis } from '../types';
 import type { CellLook } from './coverage';
 import { CoverageSwatch } from './marks';
 
-/** 05 §2.8 add-on line; shown once whether or not the backend already put it in `extra`. */
+/** 05 §2.8 add-on line, driven by question.sentiment (not by matching the backend's wording). */
 export const MIXED_TONE = 'Answer tone is mixed';
+/** A backend `extra` line about the mixed tone; dropped when we render MIXED_TONE ourselves, whatever its wording. */
+const isToneLine = (line: string) => /\bmixed\b/i.test(line);
 
 /**
  * Diagnosis card (05 §2.8, 06 §5.9): full width, first card under the title. Left: the matrix cell of this
@@ -22,8 +24,8 @@ export function DiagnosisCard({
   platform: string;
   sentiment: string;
 }) {
-  const extra = [...(diagnosis.extra ?? [])];
-  if (sentiment === 'mixed' && !extra.includes(MIXED_TONE)) extra.push(MIXED_TONE);
+  const mixed = sentiment === 'mixed';
+  const extra = [...(diagnosis.extra ?? []).filter((line) => !(mixed && isToneLine(line))), ...(mixed ? [MIXED_TONE] : [])];
 
   return (
     <section aria-labelledby="diagnosis-title" className="rounded-xl border border-line bg-surface-card p-5">

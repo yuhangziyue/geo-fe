@@ -1,16 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { DATA_DIR } from '../shared/paths';
-import { PLATFORMS, QuestionSchema, type Facets, type Question, type ScenarioRef } from './schema';
-import { TOPIC_SCENARIO } from './topic-scenario';
+import { DATA_DIR, ROOT_DIR } from '../shared/paths';
+import { PLATFORMS, QuestionSchema, type Facets, type Question, type ScenarioRef, type TopicScenarioMap } from './schema';
 
 const readJson = (...parts: string[]): unknown =>
   JSON.parse(fs.readFileSync(path.join(DATA_DIR, ...parts), 'utf8'));
 
 let questionsCache: Question[] | null = null;
 let productSlugCache: Map<string, string> | null = null;
-let scenarioCache: Map<string, ScenarioRef> | null = null;
 
 /**
  * Stable id for a prompt: FNV-1a of its normalized text. The data has no prompt id; rows of the same prompt
@@ -36,16 +34,59 @@ export function loadQuestions(): Question[] {
   return questionsCache;
 }
 
-/** The scenario page a topic maps to (see topic-scenario.ts), or null. */
-export function topicScenario(topic: string): ScenarioRef | null {
-  if (!scenarioCache) {
-    const rows = z
-      .array(z.object({ slug: z.string(), name: z.string() }).passthrough())
-      .parse(readJson('project2_knowledge', 'scenarios.json'));
-    scenarioCache = new Map(rows.map((r) => [r.slug, { slug: r.slug, name: r.name }]));
+/**
+ * Topic → Knowledge Center scenario slug, hand-curated by the content team (05 §1). Deletable: without it every
+ * topic falls back to `/products` and nothing else changes. Resolved from the repo root (as DATA_DIR is), not from
+ * `import.meta.url`, which points into the bundle under `next build`.
+ */
+export const TOPIC_SCENARIO_FILE = path.join(ROOT_DIR, 'backend', 'src', 'dashboard', 'topic-scenario.json');
+
+const TopicScenarioFileSchema = z.record(z.string(), z.string().min(1).nullable());
+
+/**
+ * Reads a topic → scenario file into a TopicScenarioMap. Never throws: a missing, unreadable or malformed file
+ * (or a missing scenarios.json) gives an EMPTY map. A slug that is not in scenarios.json is dropped (→ /products).
+ */
+export function readTopicScenarios(file: string): TopicScenarioMap {
+  try {
+    if (!fs.existsSync(file)) return new Map();
+    const mapping = TopicScenarioFileSchema.parse(JSON.parse(fs.readFileSync(file, 'utf8')));
+    const scenarios = new Map(
+      z
+        .array(z.object({ slug: z.string(), name: z.string() }).passthrough())
+        .parse(readJson('project2_knowledge', 'scenarios.json'))
+        .map((r): [string, ScenarioRef] => [r.slug, { slug: r.slug, name: r.name }]),
+    );
+    const out = new Map<string, ScenarioRef | null>();
+    for (const [topic, slug] of Object.entries(mapping)) {
+      if (slug === null) out.set(topic, null);
+      else if (scenarios.has(slug)) out.set(topic, scenarios.get(slug)!);
+    }
+    return out;
+  } catch (e) {
+    console.warn('[dashboard] topic-scenario mapping ignored:', e instanceof Error ? e.message : e);
+    return new Map();
   }
-  const slug = TOPIC_SCENARIO[topic];
-  return (slug && scenarioCache.get(slug)) || null;
+}
+
+let scenarioFile = TOPIC_SCENARIO_FILE;
+let scenarioMapCache: TopicScenarioMap | null = null;
+
+/** The topic → scenario map, read once per process. Empty when topic-scenario.json is deleted. */
+export function loadTopicScenarios(): TopicScenarioMap {
+  if (!scenarioMapCache) scenarioMapCache = readTopicScenarios(scenarioFile);
+  return scenarioMapCache;
+}
+
+/** Test hook: drop the cache, optionally pointing the loader at another file. Not used at runtime. */
+export function __resetScenarioCache(file: string = TOPIC_SCENARIO_FILE): void {
+  scenarioFile = file;
+  scenarioMapCache = null;
+}
+
+/** The scenario page a topic maps to, or null (unmapped, deliberately null, or mapping file deleted). */
+export function topicScenario(topic: string): ScenarioRef | null {
+  return loadTopicScenarios().get(topic) ?? null;
 }
 
 /** Filter options taken from the full dataset (not the filtered rows), so a narrowed view can still switch. */

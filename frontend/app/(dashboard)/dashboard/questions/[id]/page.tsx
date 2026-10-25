@@ -1,14 +1,15 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { loadQuestions } from '@geo/backend/dashboard/repo';
+import { findQuestionById } from '@geo/backend/dashboard/repo';
 import { QuestionDetail } from '@/components/dashboard/detail/QuestionDetail';
 
 export const dynamic = 'force-dynamic';
 
 export default async function QuestionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  // Existence check on the server so a bad id returns a real 404; the content itself loads from the API.
-  if (!/^\d+$/.test(id) || !loadQuestions().some((q) => q.id === Number(id))) notFound();
+  // Existence check on the server: a non-numeric or unknown id is a real 404 and renders ./not-found.tsx (with the
+  // filtered back link). The content itself loads from the API, so ?simulate=slow|error|empty works as before.
+  if (!findQuestionById(id)) notFound();
   return (
     <Suspense>
       <QuestionDetail id={id} />

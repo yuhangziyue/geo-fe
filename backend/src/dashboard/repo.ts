@@ -35,6 +35,16 @@ export function loadQuestions(): Question[] {
 }
 
 /**
+ * A run by its URL id, or null when the id is not a plain digit string or names no run. Used by the detail page
+ * on the server, so a bad id answers with a real 404 (notFound()) instead of an empty client state.
+ */
+export function findQuestionById(raw: string): Question | null {
+  if (!/^\d+$/.test(raw)) return null;
+  const id = Number(raw);
+  return loadQuestions().find((q) => q.id === id) ?? null;
+}
+
+/**
  * Topic → Knowledge Center scenario slug, hand-curated by the content team (05 §1). Deletable: without it every
  * topic falls back to `/products` and nothing else changes. Resolved from the repo root (as DATA_DIR is), not from
  * `import.meta.url`, which points into the bundle under `next build`.

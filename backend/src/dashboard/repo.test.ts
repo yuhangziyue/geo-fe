@@ -6,6 +6,7 @@ import { DATA_DIR } from '../shared/paths';
 import { TRUTH_DATA_SHAPE } from './__fixtures__/truth';
 import {
   __resetScenarioCache,
+  findQuestionById,
   loadQuestions,
   loadTopicScenarios,
   parseQuestions,
@@ -94,5 +95,23 @@ describe('topic → scenario mapping (deletable topic-scenario.json)', () => {
       for (const topic of new Set(loadQuestions().map((q) => q.topic))) expect(topic in raw).toBe(true);
     }
     expect(loadTopicScenarios().size).toBe(Object.keys(raw).length);
+  });
+});
+
+/* T-FIX §6: the detail page's server-side id check (a real 404 for a bad id, so its not-found page is reachable). */
+describe('findQuestionById', () => {
+  const all = loadQuestions();
+
+  it('returns the run for an id in the data', () => {
+    for (const q of [all[0], all[all.length - 1]]) expect(findQuestionById(String(q.id))).toBe(q);
+  });
+
+  it('returns null for an id that is not in the data', () => {
+    expect(findQuestionById(String(Math.max(...all.map((q) => q.id)) + 1))).toBeNull();
+    expect(findQuestionById('0')).toBeNull();
+  });
+
+  it.each(['abc', '1.5', '-1', '1e2', '', ' 1', '0x1', '1abc'])('returns null for the non-numeric id %j', (raw) => {
+    expect(findQuestionById(raw)).toBeNull();
   });
 });

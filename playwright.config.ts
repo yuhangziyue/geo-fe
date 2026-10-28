@@ -18,6 +18,7 @@ export default defineConfig({
     command: `${env} pnpm seed && ${env} pnpm --filter frontend build && ${env} pnpm --filter frontend exec next start -p ${PORT}`,
     url: `http://localhost:${PORT}/products`,
     timeout: 240_000,
-    reuseExistingServer: !process.env.CI,
+    // Never reuse: a server already on 3100 would skip the fresh seed and build and test stale code.
+    reuseExistingServer: false,
   },
 });

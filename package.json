@@ -1,7 +1,7 @@
 {
   "name": "geo-fe",
   "private": true,
-  "packageManager": "pnpm@7.18.0",
+  "packageManager": "pnpm@7.33.7",
   "engines": {
     "node": ">=18.18"
   },

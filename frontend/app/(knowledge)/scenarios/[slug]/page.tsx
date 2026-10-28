@@ -4,8 +4,9 @@ import { notFound } from 'next/navigation';
 import { buildScenarioJsonLd } from '@geo/backend/knowledge/jsonld';
 import { getBrand, getScenario, listScenarios } from '@geo/backend/knowledge/repo';
 import { ProductCard } from '@/components/knowledge/ProductCard';
+import { siteUrl } from '@geo/backend/shared/site';
 
-const SITE_URL = process.env.SITE_URL ?? 'http://localhost:3000';
+const SITE_URL = siteUrl();
 
 type Props = { params: Promise<{ slug: string }> };
 

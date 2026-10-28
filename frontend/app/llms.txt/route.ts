@@ -1,8 +1,9 @@
 import { getBrand, listProducts, listScenarios, listSeries } from '@geo/backend/knowledge/repo';
+import { siteUrl } from '@geo/backend/shared/site';
 
 // llms.txt (llmstxt.org): a plain-text map of the Knowledge Center for AI crawlers. Regenerated after admin writes.
 export function GET(): Response {
-  const base = (process.env.SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+  const base = siteUrl();
   const brand = getBrand();
   const products = listProducts({});
   const lines = [

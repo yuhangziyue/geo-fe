@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(knowledge)/layout,_N_T_/(knowledge)/products/layout,_N_T_/(knowledge)/products/[slug]/layout,_N_T_/(knowledge)/products/[slug]/page,_N_T_/products/thermal-t4"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/8e2f337c43bdab740f5fa00c0caa3efa7312fb061e1c43854c1e4680e6752376/$/products/thermal-t4",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/(knowledge)/products/[slug]/page"
+    },
+    "isFallback": false
+  }
+}

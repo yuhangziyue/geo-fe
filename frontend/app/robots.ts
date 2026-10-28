@@ -1,7 +1,8 @@
 import type { MetadataRoute } from 'next';
+import { siteUrl } from '@geo/backend/shared/site';
 
 export default function robots(): MetadataRoute.Robots {
-  const base = (process.env.SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+  const base = siteUrl();
   return {
     rules: [{ userAgent: '*', allow: '/', disallow: ['/dashboard', '/admin', '/api'] }],
     sitemap: `${base}/sitemap.xml`,

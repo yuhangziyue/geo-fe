@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import path from 'node:path';
 import { siteUrl, siteUrlNotice } from '../backend/src/shared/site';
 
 // A malformed SITE_URL fails here, before any page is built. Build workers load this file again but inherit the
@@ -11,6 +12,8 @@ if (notice && !process.env.GEO_SITE_URL_NOTICE_SHOWN) {
 }
 
 const nextConfig: NextConfig = {
+  // Monorepo: trace the whole workspace so Next never mistakes a stray lockfile elsewhere for the root.
+  outputFileTracingRoot: path.join(__dirname, '..'),
   // backend/ ships TypeScript source; Next compiles it in-process (one service, two directories).
   transpilePackages: ['@geo/backend'],
   serverExternalPackages: ['better-sqlite3'],

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { TRUTH_INTENTS, TRUTH_PERIOD, TRUTH_PLATFORMS, TRUTH_TREND } from '../../__fixtures__/truth';
 import { loadQuestions } from '../../repo';
 import { PLATFORMS, type AttributionVerdict } from '../../schema';
-import { buildAttribution, buildIntentTrends } from '../attribution';
+import { buildAttribution, buildIntentTrends, buildPlatformTrends } from '../attribution';
+import { periodDays } from '../period';
 
 const questions = loadQuestions();
 
@@ -93,5 +94,40 @@ describe('buildIntentTrends', () => {
     const aLast = t.A[t.A.length - 1];
     expect(aLast.rollingN).toBe(14);
     expect(aLast.rollingVisibility).not.toBeNull();
+  });
+});
+
+// P1 (docs/dashboard-design-optimization-v1.md §3): per-platform 14-day rolling windows for the small multiples;
+// every platform has ~24 rows over 30 days, so a full window holds n≈11 — above the n ≥ 8 line gate everywhere.
+describe('buildPlatformTrends', () => {
+  const days = periodDays(questions);
+  const trends = buildPlatformTrends(questions, {});
+  const last14 = { from: days[days.length - 14], to: days[days.length - 1] };
+
+  it('one series per platform in PLATFORMS order, each keeping the full 30-day axis', () => {
+    expect(Object.keys(trends)).toEqual([...PLATFORMS]);
+    for (const p of PLATFORMS) expect(trends[p]).toHaveLength(TRUTH_TREND.days);
+  });
+
+  it('draws nothing before the 14-day window is full, then a gated line with independently counted n', () => {
+    for (const p of PLATFORMS) {
+      for (const point of trends[p].slice(0, 13)) expect(point.rollingVisibility).toBeNull();
+      const last = trends[p][trends[p].length - 1];
+      const n = questions.filter((q) => q.platform === p && q.date >= last14.from && q.date <= last14.to).length;
+      expect(n).toBeGreaterThanOrEqual(8); // n≈11 on this dataset; the gate must not erase an unfiltered line
+      expect(last.rollingN).toBe(n);
+      expect(last.rollingVisibility).not.toBeNull();
+    }
+  });
+
+  it('stacks with the current filter and hides the line when a filtered window drops below n = 8', () => {
+    const t = buildPlatformTrends(questions, { intent: 'A' });
+    const last = t.DeepSeek[t.DeepSeek.length - 1];
+    const n = questions.filter(
+      (q) => q.platform === 'DeepSeek' && q.intent_type === 'A' && q.date >= last14.from && q.date <= last14.to,
+    ).length;
+    expect(last.rollingN).toBe(n);
+    if (n >= 8) expect(last.rollingVisibility).not.toBeNull();
+    else expect(last.rollingVisibility).toBeNull();
   });
 });

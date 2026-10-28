@@ -1,7 +1,8 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Card as AntCard } from 'antd';
+import { color } from '../../design/tokens';
 
 interface Props {
   status: 'loading' | 'error' | 'ok';
@@ -68,33 +69,50 @@ export function AsyncState({ status, error, isEmpty, refreshing, onRetry, empty,
   );
 }
 
+/**
+ * P1 signal console material (docs/dashboard-design-optimization-v1.md §2): surface-console (#0F172A) with a
+ * fine hairline grid from pure CSS gradients — no image, no extra colour (the lines are line-console #1E293B).
+ */
+const CONSOLE_GRID: CSSProperties = {
+  backgroundColor: color.surface.console,
+  borderColor: color.line.console,
+  backgroundImage:
+    'linear-gradient(rgba(30,41,59,0.85) 1px, transparent 1px), linear-gradient(90deg, rgba(30,41,59,0.85) 1px, transparent 1px)',
+  backgroundSize: '28px 28px',
+};
+
 /** Card chrome: 1px `line` border, no shadow (06 §4), radius 12, padding 20. */
 export function Card({
   title,
   subtitle,
   action,
   className = '',
+  tone = 'default',
   children,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
   action?: ReactNode;
   className?: string;
+  /** 'console' renders the dark signal-console material (P1 Overall trend only). */
+  tone?: 'default' | 'console';
   children: ReactNode;
 }) {
+  const onConsole = tone === 'console';
   return (
     <section className={`min-w-0 ${className}`}>
       <AntCard
         title={
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-ink">{title}</h2>
-            {subtitle && <p className="mt-0.5 text-sm text-ink-secondary">{subtitle}</p>}
+            <h2 className={`text-base font-semibold ${onConsole ? 'text-ink-inverse' : 'text-ink'}`}>{title}</h2>
+            {subtitle && <p className={`mt-0.5 text-sm ${onConsole ? 'text-ink-on-console' : 'text-ink-secondary'}`}>{subtitle}</p>}
           </div>
         }
         extra={action}
-        styles={{ body: { padding: 20 }, header: { paddingTop: 20, paddingBottom: 12 } }}
+        style={onConsole ? CONSOLE_GRID : undefined}
+        styles={{ body: { padding: 20, background: 'transparent' }, header: { paddingTop: 20, paddingBottom: 12, background: 'transparent' } }}
         classNames={{ header: '[&_.ant-card-head-title]:!overflow-visible [&_.ant-card-head-title]:!whitespace-normal' }}
-        className="rounded-xl border-line"
+        className={`rounded-xl ${onConsole ? 'border-line-console' : 'border-line'}`}
       >
         {children}
       </AntCard>

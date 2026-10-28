@@ -176,6 +176,46 @@ test.describe('dashboard', () => {
     await expect(selectBox(page, 'Topic')).toHaveAttribute('title', 'Retail Analytics');
   });
 
+  test('P1 signal console: dark Overall card with cutoff stamp, then 14-day platform small multiples', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.getByText('questions asked').first()).toBeVisible();
+    const trend = page.locator('section', { has: page.getByRole('heading', { name: 'Visibility trend' }) });
+    const card = trend.locator('.ant-card').first();
+
+    // Overall pane = dark signal console (#0F172A) with the static "● LIVE · as of Aug 30" cutoff stamp.
+    await expect(card).toHaveCSS('background-color', 'rgb(15, 23, 42)');
+    const stamp = trend.locator('[title*="nightly snapshot"]').first();
+    await expect(stamp).toBeVisible();
+    await expect(stamp).toContainText('LIVE');
+    await expect(stamp).toContainText('as of Aug 30');
+    // The stamp explains itself: static snapshot, not a live feed.
+    expect(await stamp.getAttribute('title')).toMatch(/static cutoff marker/i);
+
+    // View separation: Attribution is the light analytical surface — stamp and console are gone.
+    await trend.getByRole('tab', { name: 'Attribution' }).click();
+    await expect(trend.getByText(/LIVE/)).toHaveCount(0);
+    await expect(card).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+
+    // Platform pane: five 14-day small multiples (never a sixth), each with a window-n badge (window n, not 24).
+    const minis = trend.getByRole('img', { name: /^14-day rolling visibility for / });
+    await expect(minis).toHaveCount(5);
+    const badges = trend.getByText(/^n=\d+$/);
+    await expect(badges.first()).toBeVisible();
+    const badgeTexts = await badges.allTextContents();
+    expect(badgeTexts.every((t) => Number(t.slice(2)) < 24)).toBeTruthy();
+
+    // Tooltip states the window row count verbatim: "14-day: 11 rows".
+    const deepseek = trend.getByRole('img', { name: '14-day rolling visibility for DeepSeek' });
+    await deepseek.hover({ position: { x: 120, y: 30 } });
+    await expect(page.locator('body')).toContainText(/14-day: \d+ rows/);
+
+    // Cyan signal and teal intent never share an axis: the console chart only exists on the Overall tab.
+    await trend.getByRole('tab', { name: 'Intent', exact: true }).click();
+    await expect(minis).toHaveCount(0);
+    await expect(trend.getByRole('img', { name: '7-day rolling visibility with daily values' })).toHaveCount(0);
+    await expect(trend.getByRole('img', { name: '7-day rolling visibility for intent A and C' })).toBeVisible();
+  });
+
   test('Generate summary always works without a key', async ({ page }) => {
     await page.goto('/dashboard?tab=insights');
     const actionCenter = page.locator('section', { hasText: 'Action Center' });

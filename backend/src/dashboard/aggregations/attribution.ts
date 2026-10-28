@@ -1,7 +1,7 @@
 import { applyFilter, pct } from '../metrics';
 import { PLATFORMS } from '../schema';
-import type { AttributionDTO, AttributionRow, AttributionShift, AttributionVerdict, GlobalFilter, HalfBucket, Question, TrendPoint } from '../schema';
-import { buildTrend } from './trend';
+import type { AttributionDTO, AttributionRow, AttributionShift, AttributionVerdict, GlobalFilter, HalfBucket, PlatformTrends, Question, TrendPoint } from '../schema';
+import { buildTrend, PLATFORM_MIN_WINDOW_N, PLATFORM_WINDOW_DAYS } from './trend';
 import { MIN_HALF_N, inHalf, periodDays, periodHalves } from './period';
 
 /**
@@ -88,4 +88,20 @@ export function buildIntentTrends(questions: Question[], filter: GlobalFilter): 
     A: buildTrend(applyFilter(questions, { ...filter, intent: 'A' }), days),
     C: buildTrend(applyFilter(questions, { ...filter, intent: 'C' }), days),
   };
+}
+
+/**
+ * Per-platform 14-day rolling trends for the small multiples (P1, docs/dashboard-design-optimization-v1.md §3).
+ * Each platform keeps the FULL period axis (n≈11 per full window on this dataset), and a window is drawn only
+ * when it holds ≥ PLATFORM_MIN_WINDOW_N questions — filtered windows below the gate stay null ("no fabricated
+ * lines"). Rows per platform = current filter + that platform, mirroring buildIntentTrends.
+ */
+export function buildPlatformTrends(questions: Question[], filter: GlobalFilter): PlatformTrends {
+  const days = periodDays(questions);
+  return Object.fromEntries(
+    PLATFORMS.map((p) => [
+      p,
+      buildTrend(applyFilter(questions, { ...filter, platform: p }), days, PLATFORM_WINDOW_DAYS, PLATFORM_MIN_WINDOW_N),
+    ]),
+  ) as PlatformTrends;
 }

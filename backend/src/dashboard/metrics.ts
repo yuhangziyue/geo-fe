@@ -1,5 +1,5 @@
 import { buildFunnel } from './aggregations/funnel';
-import { buildAttribution, buildIntentTrends } from './aggregations/attribution';
+import { buildAttribution, buildIntentTrends, buildPlatformTrends } from './aggregations/attribution';
 import { intentRows } from './aggregations/intents';
 import { buildMatrix } from './aggregations/matrix';
 import { periodDays, periodHalves } from './aggregations/period';
@@ -146,5 +146,6 @@ export function computeSummary(questions: Question[], filter: GlobalFilter): Sum
     periodHalves: halves,
     attribution: buildAttribution(questions, filter),
     intentTrends: buildIntentTrends(questions, filter),
+    platformTrends: buildPlatformTrends(questions, filter),
   };
 }

@@ -308,6 +308,9 @@ export interface TrendPoint {
   rollingQuestions: number;
 }
 
+/** Per-platform 14-day rolling trends for the P1 small multiples (docs/dashboard-design-optimization-v1.md §3). */
+export type PlatformTrends = { [K in Platform]: TrendPoint[] };
+
 export interface IntentRow {
   tier: IntentTier;
   /** = INTENT_LABELS[tier].name */
@@ -408,6 +411,8 @@ export interface SummaryV3DTO {
   attribution: AttributionDTO;
   /** Intent A / C 7-day rolling trends under the current filter (05 §3) — the two tiers with enough half samples. */
   intentTrends: { A: TrendPoint[]; C: TrendPoint[] };
+  /** Per-platform 14-day rolling trends under the current filter (P1, docs/dashboard-design-optimization-v1.md §3). */
+  platformTrends: PlatformTrends;
 }
 
 /** GET /api/dashboard/summary. `facets` come from the full data (not the filtered rows), as in e2 — they feed the FilterBar. */

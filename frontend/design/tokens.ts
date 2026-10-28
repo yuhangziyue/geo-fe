@@ -1,10 +1,24 @@
 // The only place a colour value is defined for the dashboard (spec 06 §3.6).
 // One TS object feeds both Tailwind (tailwind.config.ts) and ECharts (chartTheme.ts).
+//
+// P1 (docs/dashboard-design-optimization-v1.md §2): additions only — the indigo family stays status/recommend,
+// cyan is the time-signal family (E3 exception), and the console material reuses the ink value.
+const INK = '#0F172A';
+
 export const color = {
   brand: { DEFAULT: '#4F46E5', hover: '#4338CA', ink: '#3730A3', subtle: '#EEF2FF', on: '#FFFFFF' },
-  ink: { DEFAULT: '#0F172A', secondary: '#475569', tertiary: '#64748B', disabled: '#94A3B8' },
-  surface: { page: '#F8FAFC', card: '#FFFFFF', sunken: '#F1F5F9' },
-  line: { DEFAULT: '#E2E8F0', strong: '#CBD5E1' },
+  ink: {
+    DEFAULT: INK,
+    secondary: '#475569',
+    tertiary: '#64748B',
+    disabled: '#94A3B8',
+    inverse: '#F1F5F9', // primary text on surface-console
+    'on-console': '#94A3B8', // secondary text / axes on surface-console
+  },
+  surface: { page: '#F8FAFC', card: '#FFFFFF', sunken: '#F1F5F9', console: INK /* = ink.DEFAULT, never redefined */ },
+  line: { DEFAULT: '#E2E8F0', strong: '#CBD5E1', console: '#1E293B' /* hairlines / grid on surface-console */ },
+  // Cyan = time signal only: #22D3EE for the dark console line (9.88:1), #0891B2 for cyan graphics on light (3.68:1).
+  signal: { DEFAULT: '#0891B2', ink: '#0E7490', 'on-dark': '#22D3EE' },
   positive: { DEFAULT: '#047857', subtle: '#ECFDF5' },
   warning: { DEFAULT: '#B45309', mark: '#D97706', subtle: '#FFFBEB', ink: '#92400E' },
   danger: { DEFAULT: '#BE123C', mark: '#E11D48', subtle: '#FFF1F2' },

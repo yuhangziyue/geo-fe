@@ -3,13 +3,21 @@ import type { Question, TrendPoint } from '../schema';
 import { addDays } from './period';
 
 const WINDOW_DAYS = 7;
+/**
+ * The historical 7-day callers (Overall, intent A/C) draw any full, non-empty window.
+ */
+const MIN_WINDOW_N = 1;
+/** Platform small multiples use a 14-day window with the n ≥ 8 line gate (docs/dashboard-design-optimization-v1.md §3). */
+export const PLATFORM_WINDOW_DAYS = 14;
+export const PLATFORM_MIN_WINDOW_N = 8;
 
 /**
- * 7-day rolling visibility over `days` (the full period, so a filter keeps the axis). Daily values are kept as
- * faint samples; a day without questions is null, and so is a window that is not full yet or has no questions.
- * The numerators (…Mentions / …Questions) are plain counts and are 0, never null, when there is nothing to count.
+ * Rolling visibility over `days` (the full period, so a filter keeps the axis). Daily values are kept as
+ * faint samples; a day without questions is null, and so is a window that is not full yet, has no questions,
+ * or holds fewer than `minWindowN` questions. The numerators (…Mentions / …Questions) are plain counts and are
+ * 0, never null, when there is nothing to count.
  */
-export function buildTrend(rows: Question[], days: string[]): TrendPoint[] {
+export function buildTrend(rows: Question[], days: string[], windowDays = WINDOW_DAYS, minWindowN = MIN_WINDOW_N): TrendPoint[] {
   const byDay = new Map<string, { n: number; m: number }>();
   for (const q of rows) {
     const d = byDay.get(q.date) ?? { n: 0, m: 0 };
@@ -17,7 +25,7 @@ export function buildTrend(rows: Question[], days: string[]): TrendPoint[] {
   }
   return days.map((date, i) => {
     const day = byDay.get(date) ?? { n: 0, m: 0 };
-    const from = addDays(date, -(WINDOW_DAYS - 1));
+    const from = addDays(date, -(windowDays - 1));
     let rollingN = 0;
     let rollingM = 0;
     for (const [d, v] of byDay) {
@@ -26,14 +34,14 @@ export function buildTrend(rows: Question[], days: string[]): TrendPoint[] {
         rollingM += v.m;
       }
     }
-    const full = i >= WINDOW_DAYS - 1;
+    const full = i >= windowDays - 1;
     return {
       date,
       dailyVisibility: day.n > 0 ? pct(day.m, day.n) : null,
       dailyN: day.n,
       dailyMentions: day.m,
       dailyQuestions: day.n,
-      rollingVisibility: full && rollingN > 0 ? pct(rollingM, rollingN) : null,
+      rollingVisibility: full && rollingN >= minWindowN ? pct(rollingM, rollingN) : null,
       rollingN,
       rollingMentions: rollingM,
       rollingQuestions: rollingN,

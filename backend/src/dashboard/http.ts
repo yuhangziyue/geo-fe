@@ -25,6 +25,7 @@ import {
   type SummaryV3DTO,
   type SummaryV3Response,
   type TopicScenarioMap,
+  type TrendPoint,
 } from './schema';
 
 type Handler<C = unknown> = (req: Request, ctx?: C) => Promise<Response>;
@@ -93,6 +94,7 @@ function emptySummary(): SummaryV3DTO {
     periodHalves: periodHalves([], periodDays(loadQuestions())),
     attribution: { byPlatform: { rows: [], shift: [] }, byIntent: { rows: [], shift: [] } },
     intentTrends: { A: [], C: [] },
+    platformTrends: Object.fromEntries(PLATFORMS.map((p) => [p, [] as TrendPoint[]])) as SummaryV3DTO['platformTrends'],
   };
 }
 

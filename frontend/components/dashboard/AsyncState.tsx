@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { Card as AntCard } from 'antd';
 
 interface Props {
   status: 'loading' | 'error' | 'ok';
@@ -82,15 +83,20 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <section className={`min-w-0 rounded-xl border border-line bg-surface-card p-5 ${className}`}>
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-ink">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-sm text-ink-secondary">{subtitle}</p>}
-        </div>
-        {action}
-      </header>
-      {children}
+    <section className={`min-w-0 ${className}`}>
+      <AntCard
+        title={
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-ink">{title}</h2>
+            {subtitle && <p className="mt-0.5 text-sm text-ink-secondary">{subtitle}</p>}
+          </div>
+        }
+        extra={action}
+        styles={{ body: { padding: 20 }, header: { paddingTop: 20, paddingBottom: 12 } }}
+        className="rounded-xl border-line"
+      >
+        {children}
+      </AntCard>
     </section>
   );
 }

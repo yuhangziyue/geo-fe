@@ -19,8 +19,8 @@ export function ActionCenter() {
   const { filter, buildHref } = useGlobalFilter();
   const simulate = useSearchParams().get('simulate');
   const cards = useApi<ActionCardsResponse>(buildHref('/api/dashboard/action-center/cards'));
-  // Keyed by the selection: a summary written for another filter must not linger next to these cards.
-  const key = `${filter.platform ?? ''}|${filter.topic ?? ''}|${filter.intent ?? ''}|${simulate ?? ''}`;
+  // Keyed by the selection: a summary written for another filter / window must not linger next to these cards.
+  const key = `${filter.platform ?? ''}|${filter.topic ?? ''}|${filter.intent ?? ''}|${filter.from ?? ''}|${filter.to ?? ''}|${simulate ?? ''}`;
   return <ActionCenterBody key={key} cards={cards} filter={filter} simulate={simulate} />;
 }
 

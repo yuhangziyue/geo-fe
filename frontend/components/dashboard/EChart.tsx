@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ECharts, EChartsOption } from 'echarts';
 
 /** The chart's numbers as a table: a canvas is opaque to screen readers and cannot be copied from. */
@@ -16,11 +16,14 @@ interface Props {
   onClick?: (params: { name: string; seriesName?: string; dataIndex: number }) => void;
   ariaLabel: string;
   table?: ChartTable;
+  /** Show the chart/table switch in the top-right corner when `table` is provided (default on). */
+  tableToggle?: boolean;
 }
 
 /** ECharts wrapper: loads echarts on the client only, follows its container's size, disposes on unmount. */
-export function EChart({ option, height = 300, onClick, ariaLabel, table }: Props) {
+export function EChart({ option, height = 300, onClick, ariaLabel, table, tableToggle = true }: Props) {
   const tableId = useId();
+  const [view, setView] = useState<'chart' | 'table'>('chart');
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<ECharts | null>(null);
   const clickRef = useRef(onClick);
@@ -54,13 +57,44 @@ export function EChart({ option, height = 300, onClick, ariaLabel, table }: Prop
     chart.current?.setOption(option, true);
   }, [option]);
 
+  useEffect(() => {
+    if (!table) setView('chart');
+  }, [table]);
+
+  const toggle = (
+    <div className="flex justify-end">
+      <div role="group" aria-label="Chart or table view" className="flex items-center rounded-md border border-line bg-surface-sunken p-0.5">
+        {(['chart', 'table'] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={view === v}
+            onClick={() => setView(v)}
+            className={`focus-ring rounded px-2 py-0.5 text-xs font-medium transition-colors duration-[120ms] ease-out ${
+              view === v ? 'bg-surface-card text-ink' : 'text-ink-tertiary hover:text-ink-secondary'
+            }`}
+          >
+            {v === 'chart' ? 'Chart' : 'Table'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <div ref={el} role="img" aria-label={ariaLabel} aria-describedby={table ? tableId : undefined} style={{ height, width: '100%' }} />
+      {table && tableToggle && <div className="mb-2">{toggle}</div>}
+      <div
+        ref={el}
+        role="img"
+        aria-label={ariaLabel}
+        aria-describedby={table ? tableId : undefined}
+        className={view === 'table' ? 'hidden' : undefined}
+        style={{ height, width: '100%' }}
+      />
       {table && (
-        <details className="mt-2 text-sm">
-          <summary className="cursor-pointer text-xs font-medium text-ink-tertiary hover:text-ink">Show data table</summary>
-          <div className="mt-2 overflow-x-auto">
+        view === 'table' && (
+          <div className="overflow-x-auto">
             <table id={tableId} className="w-full text-left text-xs">
               <caption className="sr-only">{table.caption}</caption>
               <thead className="border-b border-line text-ink-tertiary">
@@ -85,7 +119,7 @@ export function EChart({ option, height = 300, onClick, ariaLabel, table }: Prop
               </tbody>
             </table>
           </div>
-        </details>
+        )
       )}
     </>
   );

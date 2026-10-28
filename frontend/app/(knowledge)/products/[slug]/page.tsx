@@ -61,7 +61,8 @@ export default async function ProductPage({ params }: Props) {
       </header>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-3">
-        <div className="space-y-8 lg:col-span-2">
+        {/* min-w-0: grid tracks size from item min-content; without it the specs table (532px) blows out the column at 375. */}
+        <div className="min-w-0 space-y-8 lg:col-span-2">
           <Section id="overview" title="Overview">
             <p className="text-slate-700">{p.overview}</p>
           </Section>
@@ -133,7 +134,7 @@ export default async function ProductPage({ params }: Props) {
           </Section>
         </div>
 
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           <AskPanel productSlug={p.slug} productName={p.name} />
           {p.seriesSiblings.length > 0 && (
             <section aria-labelledby="siblings-title" className="rounded-lg border border-slate-200 bg-white p-5">

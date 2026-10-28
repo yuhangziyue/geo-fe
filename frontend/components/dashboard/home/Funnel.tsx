@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowDownOutlined, ArrowRightOutlined, EyeOutlined, LikeOutlined, MessageOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { series } from '../../../design/chartTheme';
@@ -46,6 +47,7 @@ function FunnelBand({ f }: { f: FunnelKpi }) {
         <Step
           href={buildHref('/dashboard/questions')}
           label="Asked"
+          icon={<MessageOutlined aria-hidden />}
           tip="Questions analyzed in this selection (one row = one run of a prompt on one platform)."
           value={asked}
           sub="questions asked"
@@ -55,6 +57,7 @@ function FunnelBand({ f }: { f: FunnelKpi }) {
         <Step
           href={buildHref('/dashboard/questions', { mentioned: 'true' })}
           label="Mentioned"
+          icon={<EyeOutlined aria-hidden />}
           tip="Visibility = questions whose answer mentions the brand ÷ questions asked."
           value={f.mentions.value}
           sub={`${f.mentions.rateOfAsked}% of asked`}
@@ -75,6 +78,7 @@ function FunnelBand({ f }: { f: FunnelKpi }) {
         <Step
           href={buildHref('/dashboard/questions', { recommended: 'true' })}
           label="Recommended"
+          icon={<LikeOutlined aria-hidden />}
           tip="Recommendation rate = questions whose answer recommends the brand ÷ questions asked. The connector shows recommended ÷ mentioned."
           value={f.recommendations.value}
           sub={`${f.recommendations.rateOfAsked}% of asked · ${f.recommendations.rateOfPrevious}% of mentioned`}
@@ -107,6 +111,7 @@ function FunnelBand({ f }: { f: FunnelKpi }) {
 function Step(props: {
   href: string;
   label: string;
+  icon: ReactNode;
   tip: string;
   value: number;
   sub: string;
@@ -114,10 +119,11 @@ function Step(props: {
   bar: { pct: number; className?: string; color?: string };
   after?: ReactNode;
 }) {
-  const { href, label, tip, value, sub, delta, bar, after } = props;
+  const { href, label, icon, tip, value, sub, delta, bar, after } = props;
   return (
     <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-1 px-3 pt-2 text-sm font-medium text-ink-secondary">
+      <div className="flex items-center gap-1.5 px-3 pt-2 text-sm font-medium text-ink-secondary">
+        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-brand/10 text-[13px] text-brand">{icon}</span>
         {label}
         <InfoTip text={tip} />
       </div>
@@ -130,9 +136,9 @@ function Step(props: {
         <span className="block text-3xl font-semibold tabular-nums text-ink">{value}</span>
         <span className="mt-0.5 block text-xs text-ink-tertiary tabular-nums">{sub}</span>
         <span className="mt-1 block min-h-4">{delta}</span>
-        <span className="mt-2 block h-1 w-full rounded-full bg-surface-sunken" aria-hidden>
+        <span className="mt-2 block h-2.5 w-full overflow-hidden rounded-md bg-surface-sunken" aria-hidden>
           <span
-            className={`block h-1 rounded-full ${bar.className ?? ''}`}
+            className={`block h-full rounded-md ${bar.className ?? ''}`}
             style={{ width: `${Math.max(0, Math.min(100, bar.pct))}%`, backgroundColor: bar.color }}
           />
         </span>
@@ -142,13 +148,19 @@ function Step(props: {
   );
 }
 
-/** `→ 66%` between steps (`↓ 66%` when the steps stack at 375). */
+/** Arrow chip between steps: `→ 66%` (↓ when the steps stack at 375) shows the conversion rate. */
 function Connector({ rate }: { rate: number }) {
   return (
-    <div className="flex items-center justify-center px-1 py-1 text-xs tabular-nums text-ink-tertiary md:py-0">
+    <div className="flex items-center justify-center px-1 py-1 text-xs tabular-nums md:py-0">
       <span className="sr-only">{rate}% continue to the next step</span>
-      <span aria-hidden className="md:hidden">↓ {rate}%</span>
-      <span aria-hidden className="hidden md:inline">→ {rate}%</span>
+      <span aria-hidden className="hidden items-center gap-1 rounded-full bg-surface-sunken px-2 py-1 font-medium text-ink-secondary md:inline-flex">
+        <ArrowRightOutlined className="text-brand" />
+        {rate}%
+      </span>
+      <span aria-hidden className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2 py-1 font-medium text-ink-secondary md:hidden">
+        <ArrowDownOutlined className="text-brand" />
+        {rate}%
+      </span>
     </div>
   );
 }

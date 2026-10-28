@@ -21,4 +21,23 @@ body {
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2;
   }
+
+  /* P1 signal console: the Overall/Attribution switch sitting on surface-console (#0F172A).
+     Scoped under .console-tabs so the light attribution card keeps the default antd colours. */
+  .console-tabs .ant-tabs-tab {
+    color: theme('colors.ink.on-console');
+  }
+  .console-tabs .ant-tabs-tab:hover {
+    color: theme('colors.ink.inverse');
+  }
+  .console-tabs .ant-tabs-tab-active .ant-tabs-tab-btn,
+  .console-tabs .ant-tabs-tab-active {
+    color: theme('colors.ink.inverse') !important;
+  }
+  .console-tabs .ant-tabs-ink-bar {
+    background: theme('colors.signal.on-dark');
+  }
+  .console-tabs .ant-tabs-nav::before {
+    border-color: theme('colors.line.console') !important;
+  }
 }

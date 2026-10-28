@@ -7,9 +7,17 @@ import { Tabs } from 'antd';
 import { palette, series } from '../../../design/chartTheme';
 import { AsyncState, Card } from '../AsyncState';
 import { EChart, type ChartTable } from '../EChart';
-import type { AttributionRow, AttributionShift, AttributionVerdict, Summary, TrendPoint } from '../types';
+import type { AttributionRow, AttributionShift, AttributionVerdict, PlatformTrends, Summary, TrendPoint } from '../types';
+import { PLATFORMS } from '../types';
 import { useGlobalFilter } from '../useGlobalFilter';
 import { asyncProps, ClearFilters, Delta, formatDay, useIsNarrow, type SummaryApi } from './shared';
+import {
+  asOfStamp,
+  consoleTrendOption,
+  consoleTrendTable,
+  latestWindowN,
+  platformTrendOption,
+} from './trendCharts';
 
 /** 05 §3 intent teal: A is the darker of the two, C the lighter — the only two tiers with enough samples to draw. */
 const INTENT_LINE_COLOR = { A: '#14B8A6', C: '#2DD4BF' } as const;
@@ -37,11 +45,19 @@ export function Trend({ api }: { api: SummaryApi }) {
   const [by, setBy] = useState<'overall' | 'attribution'>('overall');
   const [dimension, setDimension] = useState<'platform' | 'intent'>('platform');
 
-  const chart = useMemo(() => (points ? trendChart(points, narrow) : null), [points, narrow]);
+  const chart = useMemo(
+    () => (points ? { option: consoleTrendOption(points, narrow), table: consoleTrendTable(points) } : null),
+    [points, narrow],
+  );
   const hasRolling = !!points?.some((p) => p.rollingVisibility !== null);
   const sizes = [...new Set((points ?? []).filter((p) => p.dailyN > 0).map((p) => p.dailyN))];
   const sampleNote =
     sizes.length === 1 ? `daily samples are only ${sizes[0]} questions` : `daily samples are only ${Math.min(...sizes)}–${Math.max(...sizes)} questions`;
+
+  // The console material belongs to the live Overall signal only; loading / error / empty and the analytical
+  // Attribution pane stay on the light card (also what keeps cyan and teal on separate axes).
+  const hasData = !!points && points.some((p) => p.dailyN > 0);
+  const consoleTone = by === 'overall' && api.status === 'ok' && hasData;
 
   return (
     <Card
@@ -53,18 +69,22 @@ export function Trend({ api }: { api: SummaryApi }) {
             : '7-day rolling'
           : 'First half vs second half · signal = a change of at least one row of observations'
       }
+      tone={consoleTone ? 'console' : 'default'}
       action={
-        <Tabs
-          aria-label="Trend view"
-          size="small"
-          activeKey={by}
-          onChange={(key) => setBy(key as 'overall' | 'attribution')}
-          styles={{ header: { marginBottom: 0 } }}
-          items={[
-            { key: 'overall', label: 'Overall' },
-            { key: 'attribution', label: 'Attribution' },
-          ]}
-        />
+        <div className={`flex flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-3 ${consoleTone ? 'console-tabs' : ''}`}>
+          {consoleTone && points && <DataCutoffStamp date={points[points.length - 1].date} />}
+          <Tabs
+            aria-label="Trend view"
+            size="small"
+            activeKey={by}
+            onChange={(key) => setBy(key as 'overall' | 'attribution')}
+            styles={{ header: { marginBottom: 0 } }}
+            items={[
+              { key: 'overall', label: 'Overall' },
+              { key: 'attribution', label: 'Attribution' },
+            ]}
+          />
+        </div>
       }
     >
       <AsyncState
@@ -80,13 +100,38 @@ export function Trend({ api }: { api: SummaryApi }) {
       >
         {() =>
           by === 'overall' ? (
-            <EChart ariaLabel="7-day rolling visibility with daily values" height={300} option={chart!.option} table={chart!.table} />
+            <EChart
+              ariaLabel="7-day rolling visibility with daily values"
+              height={300}
+              option={chart!.option}
+              table={chart!.table}
+              theme={consoleTone ? 'geoConsole' : 'geo'}
+              tone={consoleTone ? 'console' : 'light'}
+            />
           ) : (
             <AttributionView data={api.data!} narrow={narrow} dimension={dimension} onDimension={setDimension} />
           )
         }
       </AsyncState>
     </Card>
+  );
+}
+
+/**
+ * Static data-cutoff marker (docs §2 / §5.2): "● LIVE · as of Aug 30" — a nightly-snapshot timestamp, not a
+ * polling indicator (no timer, no refresh). Title text rides with the card so the distinction survives demos.
+ */
+function DataCutoffStamp({ date }: { date: string }) {
+  const day = formatDay(date);
+  return (
+    <span
+      aria-label={`Live, data through ${day}. Static snapshot marker, not a live feed.`}
+      title={`Data through ${day} — latest nightly snapshot. Static cutoff marker; this does not poll or refresh.`}
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line-console px-2 py-0.5 text-xs text-ink-on-console"
+    >
+      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-signal-on-dark" />
+      <span aria-hidden>LIVE · {asOfStamp(date)}</span>
+    </span>
   );
 }
 
@@ -121,6 +166,7 @@ function AttributionView({
       </div>
       {dimension === 'platform' ? (
         <>
+          <PlatformSmallMultiples trends={data.platformTrends} narrow={narrow} />
           <AttributionTable rows={byPlatform.rows} filterKey="platform" />
           <ShiftChart
             shift={byPlatform.shift}
@@ -129,6 +175,8 @@ function AttributionView({
             caption="First vs second half mention share by platform"
             height={140}
           />
+          {/* Last in DOM on purpose: keeps the visible ranking table the first table for users/selectors. */}
+          <PlatformTrendsTable trends={data.platformTrends} />
         </>
       ) : (
         <>
@@ -318,70 +366,69 @@ function intentTrendChart(a: TrendPoint[], c: TrendPoint[], narrow: boolean): { 
   };
 }
 
-/** 05 §2.5 daily tooltip: "Aug 4 · 4/4 mentioned (n=4)". */
-function dailyTip(p: TrendPoint): string {
-  const day = formatDay(p.date);
-  return p.dailyQuestions === 0 ? `${day} · No questions this day` : `${day} · ${p.dailyMentions}/${p.dailyQuestions} mentioned (n=${p.dailyQuestions})`;
+/**
+ * P1 platform 14-day small multiples (docs/dashboard-design-optimization-v1.md §3): one 2px cyan line per
+ * platform (light surface, signal #0891B2 — never 3px, the console keeps the unique thick line), window n
+ * badge per cell, tooltip "14-day: 11 rows · 9/11 mentioned (82%)". A single sr-only table carries all five
+ * series for screen readers / copying; the canvases stay visually minimal on purpose.
+ */
+function PlatformSmallMultiples({ trends, narrow }: { trends: PlatformTrends; narrow: boolean }) {
+  return (
+    <div>
+      <p className="mb-2 text-xs text-ink-tertiary">14-day rolling visibility · a window needs n ≥ 8 to draw</p>
+      {/* The trend card shares its row with Platforms (half width at lg), so 3-up here = readable ~150px cells. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {PLATFORMS.map((p) => {
+          const pts = trends[p] ?? [];
+          const n = latestWindowN(pts);
+          return (
+            <div key={p} className="rounded-lg border border-line p-2">
+              <div className="flex items-baseline justify-between px-0.5">
+                <span className="text-xs font-medium text-ink-secondary">{p}</span>
+                <span className="text-[11px] tabular-nums text-ink-tertiary">{n === null ? 'n—' : `n=${n}`}</span>
+              </div>
+              <EChart
+                ariaLabel={`14-day rolling visibility for ${p}`}
+                height={88}
+                option={platformTrendOption(p, pts, narrow)}
+                tableToggle={false}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
-/** 05 §2.5 rolling tooltip: "7-day: 22/28 (79%)"; while the window is not full there is no rolling value. */
-function rollingTip(p: TrendPoint): string {
-  return p.rollingVisibility === null ? '7-day: —' : `7-day: ${p.rollingMentions}/${p.rollingQuestions} (${p.rollingVisibility}%)`;
-}
-
-function trendChart(points: TrendPoint[], narrow: boolean): { option: EChartsOption; table: ChartTable } {
-  const days = points.map((p) => formatDay(p.date));
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params) => {
-        const list = Array.isArray(params) ? params : [params];
-        const p = points[list[0]?.dataIndex ?? -1];
-        if (!p) return '';
-        return `${dailyTip(p)}<br/>${rollingTip(p)}`;
-      },
-    },
-    legend: narrow ? { top: 0 } : { bottom: 0 },
-    grid: narrow ? { left: 44, right: 16, top: 36, bottom: 28 } : { left: 44, right: 16, top: 16, bottom: 48 },
-    xAxis: { type: 'category', data: days, boundaryGap: false, axisLabel: { interval: narrow ? 6 : 'auto' } },
-    yAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } },
-    series: [
-      {
-        name: '7-day rolling',
-        type: 'line',
-        smooth: false,
-        showSymbol: false,
-        connectNulls: false,
-        lineStyle: { width: 2, color: series.visibility },
-        itemStyle: { color: series.visibility },
-        emphasis: { disabled: true },
-        data: points.map((p) => p.rollingVisibility),
-      },
-      {
-        // A scatter draws every data point (no symbol sampling, the intent of the old line's showAllSymbol) and
-        // never joins them; a day without questions is '-' (missing), so it gets no dot instead of a 0% dot.
-        name: 'Daily',
-        type: 'scatter',
-        symbol: 'circle',
-        symbolSize: 6,
-        itemStyle: { color: series.dailyDot },
-        emphasis: { disabled: true },
-        data: points.map((p) => p.dailyVisibility ?? '-'),
-      },
-    ],
-  };
-  return {
-    option,
-    table: {
-      caption: 'Daily and 7-day rolling visibility',
-      columns: ['Date', 'Daily', 'Questions', '7-day rolling', 'Window questions'],
-      rows: points.map((p) => [
-        formatDay(p.date),
-        p.dailyVisibility === null ? '—' : `${p.dailyVisibility}%`,
-        p.dailyN,
-        p.rollingVisibility === null ? '—' : `${p.rollingVisibility}%`,
-        p.rollingN,
-      ]),
-    },
-  };
+/** Screen-reader / copy surface behind the five platform sparklines (canvas is opaque). The wrapper, not the
+ *  table, carries sr-only: a table ignores the 1px clip width and would force horizontal scroll on 375px. */
+function PlatformTrendsTable({ trends }: { trends: PlatformTrends }) {
+  const days = trends[PLATFORMS[0]]?.map((p) => p.date) ?? [];
+  return (
+    <div className="sr-only">
+      <table>
+        <caption>14-day rolling visibility by platform</caption>
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            {PLATFORMS.map((p) => (
+              <th key={p} scope="col">{p}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="tabular-nums">
+          {days.map((d, i) => (
+            <tr key={d}>
+              <th scope="row">{formatDay(d)}</th>
+              {PLATFORMS.map((p) => {
+                const v = trends[p][i]?.rollingVisibility;
+                return <td key={p}>{v === null || v === undefined ? '—' : `${v}%`}</td>;
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }

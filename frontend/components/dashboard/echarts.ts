@@ -4,9 +4,10 @@ import { BarChart, LineChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
 import { init, registerTheme, use as registerModules } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import { geoTheme } from '../../design/chartTheme';
+import { geoConsoleTheme, geoTheme } from '../../design/chartTheme';
 
 registerModules([BarChart, LineChart, ScatterChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
 registerTheme('geo', geoTheme);
+registerTheme('geoConsole', geoConsoleTheme);
 
 export { init };

@@ -114,6 +114,10 @@ describe('T0 signatures', () => {
   it('periodHalves has one named type', () => {
     expectTypeOf<SummaryV3DTO['periodHalves']>().toEqualTypeOf<PeriodHalves>();
   });
+
+  it('P1: platformTrends maps every platform to its own TrendPoint series', () => {
+    expectTypeOf<SummaryV3DTO['platformTrends']>().toEqualTypeOf<Record<Platform, TrendPoint[]>>();
+  });
 });
 
 describe('llm/claude.ts: model and key (implemented in T0)', () => {

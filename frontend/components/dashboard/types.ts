@@ -34,6 +34,7 @@ export type {
   NumberUnit,
   PeriodHalves,
   PlatformRow,
+  PlatformTrends,
   QuestionDetailV3,
   QuestionDetailV3Response,
   RuleId,

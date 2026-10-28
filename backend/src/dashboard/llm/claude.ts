@@ -1,7 +1,12 @@
 import Anthropic, { APIConnectionTimeoutError } from '@anthropic-ai/sdk';
 import type { LlmFacts, LlmSummaryResult } from '../schema';
+import { LLM_TIMEOUT_MS, LlmTimeoutError } from './errors';
 import { SYSTEM_PROMPT, buildUserPrompt } from './prompts';
 import { extractNumbers, verifyAgainstFacts } from './verify';
+
+// Re-exported for existing imports (claude.test.ts, dispatcher); the canonical definition now lives in errors.ts
+// so every provider throws the same class and the dispatcher's instanceof check covers all of them.
+export { LLM_TIMEOUT_MS, LlmTimeoutError };
 
 /**
  * Claude provider (SDK usage: .superpowers/sdd/07-p1-v3-impl-plan/claude-sdk-notes.md).
@@ -13,17 +18,6 @@ export const DEFAULT_MODEL = 'claude-opus-5-5';
 export const resolveModel = (): string => process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
 
 export const isLlmEnabled = (): boolean => !!process.env.ANTHROPIC_API_KEY;
-
-/** 05 §3: the AI call gets 15 s in total (no retries), then the dispatcher falls back to the template. */
-export const LLM_TIMEOUT_MS = 15_000;
-
-/** Thrown by `summarize` when the call exceeds `timeoutMs`; the dispatcher maps it to reason 'timeout'. */
-export class LlmTimeoutError extends Error {
-  constructor(readonly timeoutMs: number) {
-    super(`LLM call timed out after ${timeoutMs} ms`);
-    this.name = 'LlmTimeoutError';
-  }
-}
 
 /** The slice of the SDK client this module uses — tests inject a fake, so no test ever reaches the network. */
 export type MessagesClient = Pick<Anthropic, 'beta'>;

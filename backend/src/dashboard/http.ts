@@ -91,6 +91,8 @@ function emptySummary(): SummaryV3DTO {
       collapsedByDefault: false,
     },
     periodHalves: periodHalves([], periodDays(loadQuestions())),
+    attribution: { byPlatform: { rows: [], shift: [] }, byIntent: { rows: [], shift: [] } },
+    intentTrends: { A: [], C: [] },
   };
 }
 

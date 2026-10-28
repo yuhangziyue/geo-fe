@@ -1,4 +1,5 @@
 import { buildFunnel } from './aggregations/funnel';
+import { buildAttribution, buildIntentTrends } from './aggregations/attribution';
 import { intentRows } from './aggregations/intents';
 import { buildMatrix } from './aggregations/matrix';
 import { periodDays, periodHalves } from './aggregations/period';
@@ -143,5 +144,7 @@ export function computeSummary(questions: Question[], filter: GlobalFilter): Sum
     sources: sourceStructure(rows),
     matrix: buildMatrix(questions, filter),
     periodHalves: halves,
+    attribution: buildAttribution(questions, filter),
+    intentTrends: buildIntentTrends(questions, filter),
   };
 }

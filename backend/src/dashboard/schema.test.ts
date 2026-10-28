@@ -25,32 +25,37 @@ import { loadQuestions } from './repo';
 // v3 contract (T0). Owner: T0 — sub-tasks import these, they do not edit them.
 
 describe('GlobalFilterSchema', () => {
-  it('accepts the three dimensions, all optional', () => {
+  it('accepts the three dimensions plus the reporting window, all optional', () => {
     expect(GlobalFilterSchema.parse({})).toEqual({});
     expect(GlobalFilterSchema.parse({ platform: 'DeepSeek', topic: 'Office Security', intent: 'A' })).toEqual({
       platform: 'DeepSeek',
       topic: 'Office Security',
       intent: 'A',
     });
+    expect(GlobalFilterSchema.parse({ from: '2026-08-24', to: '2026-08-30' })).toEqual({ from: '2026-08-24', to: '2026-08-30' });
   });
 
-  it('rejects unknown platform and intent outside S/A/B/C', () => {
+  it('rejects unknown platform, intent outside S/A/B/C and malformed dates', () => {
     expect(GlobalFilterSchema.safeParse({ platform: 'Foo' }).success).toBe(false);
     expect(GlobalFilterSchema.safeParse({ intent: 'X' }).success).toBe(false);
     expect(GlobalFilterSchema.safeParse({ topic: '' }).success).toBe(false);
+    expect(GlobalFilterSchema.safeParse({ from: '24/08/2026' }).success).toBe(false);
+    expect(GlobalFilterSchema.safeParse({ to: '2026-08' }).success).toBe(false);
   });
 });
 
 describe('QuestionQueryV3Schema', () => {
-  it('adds intent and keeps the e2 list parameters', () => {
+  it('adds intent, the reporting window and keeps the e2 list parameters', () => {
     expect(QuestionQueryV3Schema.parse({ intent: 'B', mentioned: 'false', page: '2' })).toEqual({
       intent: 'B',
       mentioned: false,
       page: 2,
       pageSize: 20,
     });
+    expect(QuestionQueryV3Schema.parse({ from: '2026-08-24', to: '2026-08-30' })).toEqual({ from: '2026-08-24', to: '2026-08-30', page: 1, pageSize: 20 });
     expect(QuestionQueryV3Schema.safeParse({ intent: 'X' }).success).toBe(false);
     expect(QuestionQueryV3Schema.safeParse({ page: '-1' }).success).toBe(false);
+    expect(QuestionQueryV3Schema.safeParse({ from: 'yesterday' }).success).toBe(false);
   });
 });
 
@@ -59,6 +64,11 @@ describe('SummaryRequestSchema', () => {
     expect(SummaryRequestSchema.parse({ mode: 'ai', intent: 'C' })).toEqual({ mode: 'ai', intent: 'C' });
     expect(SummaryRequestSchema.safeParse({}).success).toBe(false);
     expect(SummaryRequestSchema.safeParse({ mode: 'llm' }).success).toBe(false);
+    expect(SummaryRequestSchema.parse({ mode: 'rules', from: '2026-08-24', to: '2026-08-30' })).toEqual({
+      mode: 'rules',
+      from: '2026-08-24',
+      to: '2026-08-30',
+    });
   });
 });
 

@@ -137,16 +137,18 @@ export const SOURCE_TYPE_NOTE = `Source type is the dataset's label for the cite
 export const OWNED_DOMAIN_DISCLAIMER =
   'Owned = astervision.example (assumed; brand.json lists example.com/astervision).';
 
-/** Global filter: all three stack; `simulate` is passed through the URL but is not part of the filter. */
+/** Global filter: platform / topic / intent stack, `from` / `to` bound the reporting window; `simulate` is passed through the URL but is not part of the filter. */
 export const GlobalFilterSchema = z.object({
   platform: z.enum(PLATFORMS).optional(),
   topic: z.string().min(1).optional(),
   intent: z.enum(INTENTS).optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
 });
 export type GlobalFilter = z.infer<typeof GlobalFilterSchema>;
 
 /** URL keys of the global filter, in the order they are written to a URL. */
-export const GLOBAL_FILTER_KEYS = ['platform', 'topic', 'intent'] as const satisfies ReadonlyArray<keyof GlobalFilter>;
+export const GLOBAL_FILTER_KEYS = ['platform', 'topic', 'intent', 'from', 'to'] as const satisfies ReadonlyArray<keyof GlobalFilter>;
 
 /**
  * URL → filter. Each key is validated on its own: an invalid or empty value is dropped, the rest is kept
@@ -345,6 +347,50 @@ export interface PeriodHalves {
   last: { from: string; to: string; n: number };
 }
 
+/** One half of the reporting period for an attribution row: n = questions in the half, visibility = mention rate pct. */
+export interface HalfBucket {
+  from: string;
+  to: string;
+  n: number;
+  visibility: number;
+}
+
+/** Half-to-half visibility verdict of one platform / intent tier row (05 §3). */
+export type AttributionVerdict = 'signal' | 'within_error' | 'too_few_samples';
+
+/**
+ * A half-to-half attribution row: first.n / second.n are the HALF sample counts (never the full-period n),
+ * deltaPt = second.visibility − first.visibility in pt, null when either half has n < 8.
+ */
+export interface AttributionRow {
+  /** Platform name or intent tier (S/A/B/C) — the value a "View questions" link filters by. */
+  key: string;
+  label: string;
+  first: HalfBucket;
+  second: HalfBucket;
+  deltaPt: number | null;
+  verdict: AttributionVerdict;
+}
+
+/** First-half vs second-half mention counts of one dimension value, for the 100 % stacked share-migration bars. */
+export interface AttributionShift {
+  label: string;
+  firstMentions: number;
+  secondMentions: number;
+}
+
+/** One dimension of the attribution block: the delta ranking rows plus the shift the bars are built from. */
+export interface AttributionDimension {
+  rows: AttributionRow[];
+  shift: AttributionShift[];
+}
+
+/** Half-to-half attribution (05 §3): which platform / intent tier the period delta comes from. */
+export interface AttributionDTO {
+  byPlatform: AttributionDimension;
+  byIntent: AttributionDimension;
+}
+
 export interface SummaryV3DTO {
   brand: string;
   period: string;
@@ -358,6 +404,10 @@ export interface SummaryV3DTO {
   sources: SourceStructure;
   matrix: MatrixDTO;
   periodHalves: PeriodHalves;
+  /** 05 §3: byPlatform has 5 rows, byIntent has A / B / C / S (S is n=0 → too_few_samples). */
+  attribution: AttributionDTO;
+  /** Intent A / C 7-day rolling trends under the current filter (05 §3) — the two tiers with enough half samples. */
+  intentTrends: { A: TrendPoint[]; C: TrendPoint[] };
 }
 
 /** GET /api/dashboard/summary. `facets` come from the full data (not the filtered rows), as in e2 — they feed the FilterBar. */
@@ -368,6 +418,8 @@ export const QuestionQueryV3Schema = z.object({
   platform: z.enum(PLATFORMS).optional(),
   topic: z.string().min(1).optional(),
   intent: z.enum(INTENTS).optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
   mentioned: bool.optional(),
   recommended: bool.optional(),
   q: z.string().trim().max(200).optional(),
@@ -558,5 +610,7 @@ export const SummaryRequestSchema = z.object({
   platform: z.enum(PLATFORMS).optional(),
   topic: z.string().min(1).optional(),
   intent: z.enum(INTENTS).optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
 });
 export type SummaryRequest = z.infer<typeof SummaryRequestSchema>;

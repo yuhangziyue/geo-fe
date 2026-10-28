@@ -44,11 +44,12 @@ export function compareMatrixRows(a: MatrixRow, b: MatrixRow): number {
 const asTier = (s: string): IntentTier | null => ((INTENTS as readonly string[]).includes(s) ? (s as IntentTier) : null);
 
 /**
- * Question × platform matrix. Applies topic and intent only and IGNORES the platform filter (I7): always the 5
- * PLATFORMS columns, stateCounts over all 5; a platform filter only sets collapsedByDefault.
+ * Question × platform matrix. Applies topic, intent and the reporting window (from / to) but IGNORES the platform
+ * filter (I7): always the 5 PLATFORMS columns, stateCounts over all 5; a platform filter only sets
+ * collapsedByDefault. A date window bounds the runs shown, so "last 7 days" reflects coverage in that window.
  */
 export function buildMatrix(questions: Question[], filter: GlobalFilter): MatrixDTO {
-  const rows = applyFilter(questions, { topic: filter.topic, intent: filter.intent });
+  const rows = applyFilter(questions, { topic: filter.topic, intent: filter.intent, from: filter.from, to: filter.to });
   const byQuestion = new Map<string, Question[]>();
   for (const q of rows) byQuestion.set(q.question, [...(byQuestion.get(q.question) ?? []), q]);
 

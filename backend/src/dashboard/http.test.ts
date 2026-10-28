@@ -11,6 +11,7 @@ import {
   TRUTH_OWNED_SHARE,
   TRUTH_PERIOD,
   TRUTH_PLATFORMS,
+  TRUTH_TREND,
 } from './__fixtures__/truth';
 import * as http from './http';
 import { diagnose, getActionCards, getQuestion, getSummary, listQuestions, postActionSummary } from './http';
@@ -106,6 +107,12 @@ describe('parameter validation (400 problem+json)', () => {
     expect((await listQuestions(get('/api/dashboard/questions?mentioned=maybe'))).status).toBe(400);
   });
 
+  it('rejects a malformed reporting window', async () => {
+    expect((await getSummary(get('/api/dashboard/summary?from=24/08/2026'))).status).toBe(400);
+    expect((await listQuestions(get('/api/dashboard/questions?to=2026-08'))).status).toBe(400);
+    expect((await getActionCards(get('/api/dashboard/action-center/cards?from=nope'))).status).toBe(400);
+  });
+
   it('rejects a bad summary body', async () => {
     expect((await postActionSummary(post('/api/dashboard/action-center/summary', '{nope'))).status).toBe(400);
     expect((await postActionSummary(post('/api/dashboard/action-center/summary', '{"mode":"poem"}'))).status).toBe(400);
@@ -141,6 +148,8 @@ describe('simulate', () => {
     expect(s.topics).toEqual([]);
     expect(s.matrix.rows).toEqual([]);
     expect(s.matrix.platforms).toEqual([...PLATFORMS]);
+    expect(s.attribution).toEqual({ byPlatform: { rows: [], shift: [] }, byIntent: { rows: [], shift: [] } });
+    expect(s.intentTrends).toEqual({ A: [], C: [] });
     expect(s.facets.platforms).toEqual([...PLATFORMS]);
     expect(s.facets.topics.length).toBeGreaterThan(0);
 
@@ -176,10 +185,40 @@ describe('GET /summary', () => {
     expect(res.status).toBe(200);
     expect((await res.json()).funnel.questions.value).toBe(0);
   });
+
+  it('binds the reporting window: 7 days in, the funnel and the period shrink together', async () => {
+    const body = await (await getSummary(get('/api/dashboard/summary?from=2026-08-24&to=2026-08-30'))).json();
+    expect(body.period).toBe('2026-08-24~2026-08-30');
+    expect(body.funnel.questions.value).toBe(28);
+    expect(body.funnel.mentions.value).toBe(20);
+    expect(body.filter).toEqual({ from: '2026-08-24', to: '2026-08-30' });
+    // The trend keeps the full x-axis; only the window has data, and the halves are too small for a delta.
+    expect(body.trend.length).toBe(30);
+    expect(body.trend[0].dailyN).toBe(0);
+    expect(body.funnel.mentions.deltaPt).toBeNull();
+    // The matrix applies the same window (coverage in the selected days).
+    const matrixRows = body.matrix.rows as Array<{ cells: Array<{ n: number }> }>;
+    expect(matrixRows.every((r) => r.cells.every((c) => c.n <= 4))).toBe(true);
+  });
+
+  it('an empty window keeps the full period shell and zero metrics', async () => {
+    const body = await (await getSummary(get('/api/dashboard/summary?from=2026-09-01&to=2026-09-30'))).json();
+    expect(body.funnel.questions.value).toBe(0);
+    expect(body.matrix.rows).toEqual([]);
+  });
+
+  it('serves the attribution block: 5 platform rows and the A/C sub-trends on the full 30-day axis', async () => {
+    const body = await (await getSummary(get('/api/dashboard/summary'))).json();
+    expect(body.attribution.byPlatform.rows).toHaveLength(5);
+    expect(body.attribution.byPlatform.rows.map((r: { key: string }) => r.key)).toEqual([...PLATFORMS]);
+    expect(body.attribution.byIntent.rows.map((r: { key: string }) => r.key)).toEqual(['A', 'B', 'C', 'S']);
+    expect(body.intentTrends.A).toHaveLength(TRUTH_TREND.days);
+    expect(body.intentTrends.C).toHaveLength(TRUTH_TREND.days);
+  });
 });
 
 describe('KPI Asked = questions total under the same filter (05 §2.1)', () => {
-  it.each(['', 'platform=DeepSeek&intent=A', 'topic=Office%20Security'])('filter "%s"', async (qs) => {
+  it.each(['', 'platform=DeepSeek&intent=A', 'topic=Office%20Security', 'from=2026-08-24&to=2026-08-30'])('filter "%s"', async (qs) => {
     const summary = await (await getSummary(get(`/api/dashboard/summary?${qs}`))).json();
     const list = await (await listQuestions(get(`/api/dashboard/questions?${qs}`))).json();
     expect(summary.funnel.questions.value).toBe(list.total);

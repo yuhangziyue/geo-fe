@@ -8,6 +8,7 @@ node_modules/
 next-env.d.ts
 .superpowers/
 .next-e2e/
+.next-check/
 playwright-report/
 test-results/
 .claude/

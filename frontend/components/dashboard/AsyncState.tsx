@@ -93,6 +93,7 @@ export function Card({
         }
         extra={action}
         styles={{ body: { padding: 20 }, header: { paddingTop: 20, paddingBottom: 12 } }}
+        classNames={{ header: '[&_.ant-card-head-title]:!overflow-visible [&_.ant-card-head-title]:!whitespace-normal' }}
         className="rounded-xl border-line"
       >
         {children}

@@ -94,7 +94,8 @@ export function EChart({ option, height = 300, onClick, ariaLabel, table, tableT
       />
       {table && (
         view === 'table' && (
-          <div className="overflow-x-auto">
+          // Cap the table at the chart's height so switching Chart ⇄ Table never resizes the card (06 §5).
+          <div className="overflow-auto" style={{ maxHeight: height }}>
             <table id={tableId} className="w-full text-left text-xs">
               <caption className="sr-only">{table.caption}</caption>
               <thead className="border-b border-line text-ink-tertiary">

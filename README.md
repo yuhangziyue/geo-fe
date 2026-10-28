@@ -76,10 +76,11 @@ geo-fe/
 
 | 接口 | 说明 |
 |---|---|
-| `GET /api/dashboard/summary?platform=&intent=` | KPI、Prompt 覆盖率、平台对比、日趋势、Topic（附对应场景页）、意图分组、最该优化的 5 个 Prompt |
+| `GET /api/dashboard/summary?platform&topic&intent` | 漏斗 KPI（Asked→Mentioned→Recommended）、平台对比、7 日趋势、Topic、意图分层、覆盖矩阵、信源 |
 | `GET /api/dashboard/questions?platform&topic&intent&mentioned&recommended&q&page&pageSize` | 问题列表，服务端筛选与分页；附 `facets`（全量平台 / Topic / 意图） |
-| `GET /api/dashboard/questions/:id` | 问题详情、同一 Prompt 的其他观测、引用域名分组、提到的产品与对应场景页（链到 P2） |
-| `POST /api/dashboard/insight` | 规则版 AI Insight，body 为当前筛选 |
+| `GET /api/dashboard/questions/:id` | 问题详情、跨平台对比、诊断（短板归因）、引用域名分组、提到的产品与对应场景页（链到 P2） |
+| `GET /api/dashboard/action-center/cards` | 行动中心规则卡（随页加载；7 条规则） |
+| `POST /api/dashboard/action-center/summary` | 执行摘要：`{mode:'ai'}` 有 key 走 Claude、无 key 自动降级规则模板；`{mode:'rules'}` 强制模板。输出逐数字回查 |
 | `GET /api/knowledge/products?series&scenario` · `GET /api/knowledge/products/:slug` | 产品列表与详情 |
 | `POST /api/knowledge/products` · `PUT /api/knowledge/products/:slug` | 后台新增与编辑，成功后触发页面重新生成 |
 | `POST /api/knowledge/ask` | Ask AI，body `{ question, productSlug? }` |
@@ -91,6 +92,8 @@ curl 'localhost:3000/api/dashboard/questions?platform=DeepSeek&mentioned=false' 
 curl 'localhost:3000/api/dashboard/questions?platform=Foo'                        # 400
 curl -X POST localhost:3000/api/knowledge/ask -H 'content-type: application/json' \
   -d '{"question":"Does Nova X8 support PoE?","productSlug":"nova-x8"}'           # conflict: true
+curl -X POST localhost:3000/api/dashboard/action-center/summary -H 'content-type: application/json' \
+  -d '{"mode":"rules"}'                                                            # 16/16 numbers verified
 ```
 
 ### P1 数据模型
@@ -106,6 +109,8 @@ erDiagram
 ```
 
 数据没有 Prompt id，`prompt_id` 由规范化后的问题文本哈希派生（[repo.ts](backend/src/dashboard/repo.ts)）。行内业务规则（推荐必先提及、提到产品必算提及、`citation_count` = 引用条数）写在 zod 的 `superRefine` 里，数据漂移会在加载时报错，不只校验形状。
+
+v3 把「只看数」升级成「监测 → 诊断 → 行动」：首页第一层是嵌套漏斗 **Asked 120 → Mentioned 85（71%）→ Recommended 56（47%）**（行口径），其下是 32 个问题 × 5 平台的覆盖矩阵（五态，见设计选择 ⑧），行动中心（规则卡 + 执行摘要）排在矩阵之后，是全页的「行动」出口。
 
 ### P2 数据模型
 
@@ -134,16 +139,19 @@ erDiagram
 **② 指标一律由问题明细重算，summary 文件只用来对账**
 - Visibility = 被提及的问题数 ÷ 问题数，即提及率，页面上直接写明；Citations 71 是引用**条数**，另外标出只有 42 个问题有引用（35%）。
 - 取整用「四舍六入五成双」：Claude 15/24 = 62.5，出题方汇总是 62。用 JS `Math.round` 会得到 63，单测对出题方汇总逐项比对时发现。
-- 行是观测，内容按 Prompt 改，所以另算 **Prompt 覆盖率**（每次观测都提到品牌的 Prompt 数：32 个里 9 个），「最该优化」按 Prompt 去重、按最差一次观测排序，而不是按行。
-- **自有来源按域名判定，不看 `source_type = Official`**：13 条 Official 引用里只有 1 条在 `astervision.example` 上；7 条自有域名引用分散在 Industry / Review / Media。Official 是数据方的来源类别，「是否自有」要另算，混用会把自有占比算错。
-- 意图类型（`intent_type`）进入筛选、分组和 Insight（A 类 60 题、提及率 65%，最低）。数据说明写的是 S/A/B/C，但本期没有 S 类，页面如实标注；数据没定义各类含义，所以只报差异，不解释原因。
+- 行是观测，内容按 Prompt 改。v3 漏斗按行口径：**120 asked → 85 mentioned（71%）→ 56 recommended（47%）**；「最该优化」按最差一次观测排序。
+- **自有来源按域名判定，不看 `source_type = Official`**：13 条 Official 引用里只有 1 条在 `astervision.example` 上；7 条自有域名引用分散在 Industry / Review / Media。Official 是数据方的来源类别，「是否自有」要另算，混用会把自有占比算错。⚠️ `astervision.example` 是推断的自有域名（P2 brand.json 写的是 `example.com/astervision`），凡自有信源相关指标 / 卡片 / 行动卡都带 ⓘ 声明，不冒充官方口径。
+- 意图类型按业界购买漏斗定义：C 认知（45 题）→ B 方案（15 题）→ A 评估（60 题）→ S 决策（0 题）。S 层本期没有数据，页面渲染为「Not tracked」占位（斜线底），不伪装成 0%。
 - 反方：数据量小，直接读 summary 更省事。但数据源一旦换成真实明细，接口不用改。
 - 何时换：明细到百万行以上时，改为在数据库或 OLAP 里按天、平台、Topic 预聚合，接口契约不变。
 
-**③ AI Insight：规则算数，不让模型编数字**
-- 5 条结论（短板平台、短板 Topic、提及未转推荐、被提及但缺引用、自有来源占比）都由明细算出，每条附一个可点开的证据链接（预置筛选的问题列表）。
-- 反方：看起来没那么「AI」。但数字可复现、无 key 也能完整演示。
-- 何时换：配置 LLM key 后，规则算出的数字作为上下文交给模型润色和延伸，输出后回查文中每个数字，对不上的标红；规则版保留为无 key 时的兜底。
+**③ 行动中心：规则卡 + 执行摘要，数字全部可回查**
+- 7 条规则（短板平台、短板 Topic、提及未转推荐、自有来源占比、可见性下滑、无来源无提及、S 层空白）都由明细算出，每条附一个可点开的证据链接（预置筛选的问题列表）。
+- 执行摘要三档：无 key 返回确定性模板（徽标 Rules）；`LLM_PROVIDER=mock` 返回固定演示摘要（徽标 Mock LLM (demo)，内含 1 个刻意写错的数字用于演示标红）；配 `ANTHROPIC_API_KEY` 走 Claude，15 秒超时或失败自动降级模板。Generate 按钮在任何情况下都可用。
+- 摘要里的每个数字都回查事实集：抽取 → 按「数值 + 单位」比对 → 对不上的在页面上标红（可聚焦、带说明）。规则模板 16/16 全过；AI 输出可能带红。
+- 已知局限（R11）：回查只按「数值 + 单位」比对，不绑定具体事实路径——「DeepSeek 19 mentions」可能因 ChatGPT 恰好也是 19 而被误判为 verified。下一步改为数字绑定 fact path 的结构化回查，本版未实现。
+- 反方：看起来没那么「AI」；但数字可复现、无 key 也能完整演示，评审不会看到模型编数字。
+- 何时换：有真实 key 与稳定供应商后，把 `ANTHROPIC_MODEL` 换成评测过的型号；回查升级为结构化输出后关掉 mock 路径。
 
 **④ 产品页：静态生成 + 按需重新生成**
 - 详情页和场景页用 `generateStaticParams` 预生成，后台保存后 `revalidatePath`。爬虫和 AI 抓取拿到的是完整 HTML。
@@ -171,6 +179,17 @@ erDiagram
 - 同一原则用在 P1 → P2 的桥上：Topic 和场景名字从不完全相同（Warehouse Security / Warehouse），所以用一张人工映射表（[topic-scenario.ts](backend/src/dashboard/topic-scenario.ts)），6 个 Topic 有对应场景，Low-light Imaging（能力）和 Product Comparison（购买阶段）明确为无。看板上「最弱 Topic」和问题详情因此能直接指到该改的场景页，单测保证映射里的场景都真实存在。
 - 没有任何产品的场景页（Multi-site：数据里写的是 Multi-site Deployment）仍可访问，但 `noindex`、不进 sitemap 和 llms.txt、不输出 JSON-LD：空页对 SEO 和 GEO 都是薄内容。
 
+**⑧ 覆盖矩阵：五态编码，未监测 ≠ 从未被提及**
+- 32 个问题 × 5 平台一张图：recommended / partly（部分提及+推荐）/ mentioned-only / not-mentioned（从未被提及）/ not-tracked（未监测）。indigo 同色相按明度递减，越深 = AI 越在场；「越深 = 问题越大」的编码会误导——该改的是白洞，不是深色格。
+- 平台筛选时矩阵折叠（跨平台对比无意义），显示提示 + 展开按钮。
+- 反方：红绿黄信号色更「直观」，但会把「未监测」和「表现差」混为一谈，且红绿对色觉障碍用户不友好。
+- 何时换：问题数过百时默认只显示 Top-12（现默认 12 行 + Show all）。
+
+**⑨ 趋势去噪：日值只有 0/25/50/75/100，所以主线用 7 日滚动**
+- 一天一个平台一问，单日 Visibility 只能是 0/25/50/75/100，毛刺全是假信号；主线改用 7 日滚动窗口（第 1–6 天无完整窗口，留空），日值只作淡色散点参考。
+- 反方：直接画日值折线信息更全。但 0↔100 的抖动会误导「今天暴跌」的判断。
+- 何时换：单平台日问数上百（数据够密）时，日值本身有统计意义，可回到日线。
+
 ---
 
 ## 5. AI 工具使用说明
@@ -194,15 +213,16 @@ erDiagram
 ## 6. 不足，以及再给一周会先做什么
 
 **当前不足**
-- AI Insight 和 Ask AI 都是规则版，没有接真实 LLM；Ask AI 只支持英文提问，同义表达召回弱。
+- 行动中心已带 LLM 适配层（Claude / mock / 模板三档），但本机没有真实 API key，演示只能走模板或 mock；数字回查是「数值 + 单位」级（R11），不是结构化 fact-path 级。
+- Ask AI 仍是规则版（关键词检索），没有接检索 + 生成；只支持英文提问，同义表达召回弱。
 - 数据只有回答摘要（`answer_excerpt`），没有完整回答，详情页如实标为 Answer excerpt。
 - 出题方数据是模板生成的：同系列 4 款产品卖点完全相同，卖点与规格有矛盾。页面原样展示，对 SEO 是近似重复内容。
 - 后台没有登录，也不能编辑 FAQ；slug 改名不会生成 301 重定向。
 - 趋势图没有日期范围选择（接口已支持 `from` / `to`）。
-- 端到端只有 6 条冒烟用例，覆盖主路径，没有视觉回归和移动端。
+- 端到端 7 条冒烟用例，覆盖主路径，没有视觉回归和移动端。
 
 **再给一周的优先级**
-1. **接入 LLM，保留数字校验**：Insight 用规则算出的数字作为上下文让模型润色，输出后回查每个数字，对不上的标红；Ask AI 改为检索 + 生成，回答逐句标来源，检索得分过低时拒答。
+1. **LLM 全链路 + 结构化回查**：配真实 key 跑通 Claude 摘要；把 verify 升级为「数字绑定 fact path」的结构化回查（解决 R11）；Ask AI 改为检索 + 生成，回答逐句标来源，检索得分过低时拒答。
 2. **内容质量**：为每个产品补独有内容，解决卖点与规格矛盾，并在后台加「卖点与规格一致性」校验。这对 SEO 去重和 GEO 实体区分都是根本问题。
 3. **后台补齐**：登录、FAQ 编辑、slug 改名自动 301、编辑历史。
 4. **Dashboard 交互**：日期范围、平台对比切换、问题详情抽屉（拦截路由）。

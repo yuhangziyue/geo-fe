@@ -8,7 +8,8 @@ const env = `GEO_DB_FILE=${path.resolve('.local/e2e.db')} NEXT_DIST_DIR=.next-e2
 
 export default defineConfig({
   testDir: 'e2e',
-  fullyParallel: false, // one shared database; the admin test writes to it
+  workers: 1, // one shared database and the admin test writes to it: run files one at a time (fullyParallel alone does not).
+  fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure' },

@@ -24,10 +24,10 @@ pnpm dev          # 自动 seed SQLite 后启动 http://localhost:3000
 |---|---|
 | `pnpm dev` | 开发模式。先把 `data/` 里的 JSON 导入 SQLite（`.local/geo.db`），再起 Next.js |
 | `pnpm demo` | seed → `next build` → `next start`。**演示「后台改内容 → 静态页与 JSON-LD 同步更新」请用这个**：dev 模式每次请求都现场渲染，看不出按需重新生成是否生效 |
-| `pnpm test` | 后端单测（Vitest，57 条） |
+| `pnpm test` | 后端单测（Vitest，271 条） |
 | `pnpm typecheck` | 前端 `tsc --noEmit` |
 | `pnpm lint` | ESLint（`next/core-web-vitals` + `next/typescript`），零警告才通过 |
-| `pnpm e2e` | Playwright 冒烟测试（6 条）。自带生产构建，用独立的端口 3100、构建目录 `.next-e2e` 和数据库 `.local/e2e.db`，不影响正在跑的 `pnpm dev`。首次需 `pnpm exec playwright install chromium` |
+| `pnpm e2e` | Playwright 冒烟测试（15 条）。自带生产构建，用独立的端口 3100、构建目录 `.next-e2e` 和数据库 `.local/e2e.db`，不影响正在跑的 `pnpm dev`。首次需 `pnpm exec playwright install chromium` |
 
 CI（`.github/workflows/ci.yml`）依次跑 typecheck → lint → test → build → e2e，失败时上传 Playwright 报告。
 
@@ -43,6 +43,7 @@ CI（`.github/workflows/ci.yml`）依次跑 typecheck → lint → test → buil
 |---|---|---|
 | 框架 | Next.js 15（App Router）· React 19 · TypeScript strict | Node 18 上限是 Next 15 |
 | 样式 | Tailwind CSS 3.4 | |
+| 组件 | antd 6（Tabs / Select / DatePicker / Card）+ @ant-design/nextjs-registry | Dashboard 的视图切换、维度筛选、自定义日期范围与卡片外壳走 antd 最佳实践；主题 token 对齐 `frontend/design/tokens.ts` |
 | 可视化 | ECharts 5 | 只在客户端组件里加载，卸载时 dispose |
 | 类型与校验 | zod | 数据文件、接口出入参、后台表单共用一份 schema |
 | 存储 | P1：只读 JSON；P2：SQLite（better-sqlite3）+ Drizzle ORM | |
@@ -76,8 +77,8 @@ geo-fe/
 
 | 接口 | 说明 |
 |---|---|
-| `GET /api/dashboard/summary?platform&topic&intent` | 漏斗 KPI（Asked→Mentioned→Recommended）、平台对比、7 日趋势、Topic、意图分层、覆盖矩阵、信源 |
-| `GET /api/dashboard/questions?platform&topic&intent&mentioned&recommended&q&page&pageSize` | 问题列表，服务端筛选与分页；附 `facets`（全量平台 / Topic / 意图） |
+| `GET /api/dashboard/summary?platform&topic&intent&from&to` | 漏斗 KPI（Asked→Mentioned→Recommended）、平台对比、7 日趋势、Topic、意图分层、覆盖矩阵、信源；`from`/`to` 限定回看窗口（快捷筛选日 / 周 / 月） |
+| `GET /api/dashboard/questions?platform&topic&intent&from&to&mentioned&recommended&q&page&pageSize` | 问题列表，服务端筛选与分页；附 `facets`（全量平台 / Topic / 意图） |
 | `GET /api/dashboard/questions/:id` | 问题详情、跨平台对比、诊断（短板归因）、引用域名分组、提到的产品与对应场景页（链到 P2） |
 | `GET /api/dashboard/action-center/cards` | 行动中心规则卡（随页加载；7 条规则） |
 | `POST /api/dashboard/action-center/summary` | 执行摘要：`{mode:'ai'}` 有 key 走 Claude、无 key 自动降级规则模板；`{mode:'rules'}` 强制模板。输出逐数字回查 |
@@ -110,7 +111,7 @@ erDiagram
 
 数据没有 Prompt id，`prompt_id` 由规范化后的问题文本哈希派生（[repo.ts](backend/src/dashboard/repo.ts)）。行内业务规则（推荐必先提及、提到产品必算提及、`citation_count` = 引用条数）写在 zod 的 `superRefine` 里，数据漂移会在加载时报错，不只校验形状。
 
-v3 把「只看数」升级成「监测 → 诊断 → 行动」：首页第一层是嵌套漏斗 **Asked 120 → Mentioned 85（71%）→ Recommended 56（47%）**（行口径），其下是 32 个问题 × 5 平台的覆盖矩阵（五态，见设计选择 ⑧），行动中心（规则卡 + 执行摘要）排在矩阵之后，是全页的「行动」出口。
+v3 把「只看数」升级成「监测 → 诊断 → 行动」：首页第一层是嵌套漏斗 **Asked 120 → Mentioned 85（71%）→ Recommended 56（47%）**（行口径），其下是 32 个问题 × 5 平台的覆盖矩阵（五态，见设计选择 ⑧），行动中心（规则卡 + 执行摘要）是全页的「行动」出口。产品评审后的一次迭代把首页拆成两个视图（`?tab=insights` 切换，状态在 URL）：**Data（看结果）**= 漏斗 → 覆盖矩阵 → 覆盖问题词云 → 平台 | 趋势 → Topic | 意图 → 信源；**AI Insights（给行动方向）**= 行动中心。同时补了以数据末日为锚的快捷回看窗口（All / Day / Week / Month，季在 30 天数据里置灰）、每个图表的右上角 Chart / Table 切换（默认图表）和 375px 响应式底线（e2e 断言无横向溢出）。第二轮迭代（2026-10-28，设计评审见 [docs/design-review/](docs/design-review/) 与定稿 [docs/dashboard-design-optimization-v1.md](docs/dashboard-design-optimization-v1.md)）：筛选区下移重排（标题行 → 视图 Tab 行 → 筛选行）、**Custom 自定义时间范围**（popover 有界日期输入，改日期即写 URL）、趋势卡新增 **By: Overall | Attribution** 归因视图（半程 delta 排行表 + 100% 堆叠份额迁移图 + Intent A/C 7 日细分线，窗口 n≥8 才画线、样本不足不造线，排行每行带 View questions 直通问题列表）。设计思想与数字口径见 [docs/dashboard-design.md](docs/dashboard-design.md)。
 
 ### P2 数据模型
 

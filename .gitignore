@@ -12,3 +12,15 @@ next-env.d.ts
 playwright-report/
 test-results/
 .claude/
+
+# Generic build/test artifacts
+*.log
+coverage/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+.eslintcache
+*.pem
+*.key
+*.tgz

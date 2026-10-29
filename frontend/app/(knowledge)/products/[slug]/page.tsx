@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${p.name} – ${p.series.name}`,
     description: p.shortDescription,
     alternates: { canonical: url },
-    openGraph: { title: `${p.name} | AsterVision`, description: p.shortDescription, url, type: 'website', siteName: 'AsterVision' },
+    openGraph: { title: `${p.name} – ${p.series.name} · AsterVision`, description: p.shortDescription, url, type: 'website', siteName: 'AsterVision' },
   };
 }
 

@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // No linked product yet: a thin page, so keep it out of search and AI indexes until content exists.
     ...(s.products.length === 0 ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: url },
-    openGraph: { title: `${title} | AsterVision`, description: s.description, url, type: 'website', siteName: 'AsterVision' },
+    openGraph: { title: `${title} · AsterVision`, description: s.description, url, type: 'website', siteName: 'AsterVision' },
   };
 }
 

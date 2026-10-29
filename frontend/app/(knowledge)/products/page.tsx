@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'Products',
   description: 'Browse AsterVision AI video security products by series: Nova, Thermal, Lite, Panoramic and Edge.',
   alternates: { canonical: '/products' },
-  openGraph: { title: 'AsterVision Products', type: 'website', url: '/products' },
+  openGraph: { title: 'Products · AsterVision', description: 'Browse AsterVision AI video security products by series: Nova, Thermal, Lite, Panoramic and Edge.', url: '/products', type: 'website', siteName: 'AsterVision' },
 };
 
 type Props = { searchParams: Promise<{ series?: string; scenario?: string }> };

@@ -115,12 +115,14 @@ function matchesText(q: Question, needle: string): boolean {
 }
 
 export const listQuestions = withSimulate(
-  (): QuestionPageResponse => ({ items: [], total: 0, page: 1, pageSize: 20, facets: loadFacets() }),
+  (): QuestionPageResponse => ({ items: [], total: 0, page: 1, pageSize: 20, facets: loadFacets(), period: { from: '', to: '' } }),
   async (req) => {
     const parsed = QuestionQueryV3Schema.safeParse(queryObject(new URL(req.url)));
     if (!parsed.success) return invalid(parsed.error);
     const f = parsed.data;
-    const rows = applyFilter(loadQuestions(), f).filter(
+    const all = loadQuestions();
+    const days = periodDays(all);
+    const rows = applyFilter(all, f).filter(
       (q) =>
         (f.mentioned === undefined || q.brand_mentioned === f.mentioned) &&
         (f.recommended === undefined || q.brand_recommended === f.recommended) &&
@@ -133,6 +135,7 @@ export const listQuestions = withSimulate(
       page: f.page,
       pageSize: f.pageSize,
       facets: loadFacets(),
+      period: { from: days[0] ?? '', to: days[days.length - 1] ?? '' },
     } satisfies QuestionPageResponse);
   },
 );

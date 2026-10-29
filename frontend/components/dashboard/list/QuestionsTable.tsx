@@ -66,37 +66,39 @@ export function QuestionsTable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Questions</h1>
-          <p className="mt-1 text-sm text-ink-secondary">
-            Every question asked to an AI assistant and how the brand showed up in the answer.
-          </p>
-        </div>
-        <FilterBar facets={data?.facets ?? null} />
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Questions</h1>
+        <p className="mt-1 text-sm text-ink-secondary">
+          Every question asked to an AI assistant and how the brand showed up in the answer.
+        </p>
       </div>
 
-      <form
-        className="flex flex-col gap-3 rounded-xl border border-line bg-surface-card p-4 sm:flex-row sm:flex-wrap sm:items-end"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setList({ q: keyword.trim() });
-        }}
-      >
-        <YesNoSelect label="Mentioned" value={listParams.mentioned ?? ''} onChange={(v) => setList({ mentioned: v })} />
-        <YesNoSelect label="Recommended" value={listParams.recommended ?? ''} onChange={(v) => setList({ recommended: v })} />
-        <KeywordInput value={keyword} active={!!listParams.q} onChange={setKeyword} />
-        <div className="flex gap-2">
-          <button type="submit" className={secondaryBtn}>
-            Search
-          </button>
-          {hasFilters && (
-            <button type="button" onClick={clearAll} className="focus-ring h-9 rounded-md px-2 text-sm font-medium text-brand hover:text-brand-hover">
-              Clear filters
+      {/* One filter region: the global dimensions and the list-only filters act on the same rows and share one
+          URL, so they live in one card with one clear action ("Clear filters" clears both). */}
+      <section aria-label="Question filters" className="rounded-xl border border-line bg-surface-card p-4">
+        <FilterBar facets={data?.facets ?? null} range={data?.period ?? null} hideClearAll />
+        <form
+          className="mt-4 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:flex-wrap sm:items-end"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setList({ q: keyword.trim() });
+          }}
+        >
+          <YesNoSelect label="Mentioned" value={listParams.mentioned ?? ''} onChange={(v) => setList({ mentioned: v })} />
+          <YesNoSelect label="Recommended" value={listParams.recommended ?? ''} onChange={(v) => setList({ recommended: v })} />
+          <KeywordInput value={keyword} active={!!listParams.q} onChange={setKeyword} />
+          <div className="flex gap-2">
+            <button type="submit" className={secondaryBtn}>
+              Search
             </button>
-          )}
-        </div>
-      </form>
+            {hasFilters && (
+              <button type="button" onClick={clearAll} className="focus-ring h-9 rounded-md px-2 text-sm font-medium text-brand hover:text-brand-hover">
+                Clear filters
+              </button>
+            )}
+          </div>
+        </form>
+      </section>
 
       <section aria-label="Question list" className="rounded-xl border border-line bg-surface-card p-4">
         <AsyncState

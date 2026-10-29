@@ -106,6 +106,9 @@ export interface QuestionPageResponse {
   page: number;
   pageSize: number;
   facets: Facets;
+  /** Full reporting window (first..last day of ALL data, unfiltered), so the list page can anchor its range
+   *  presets exactly like the home does. Empty strings when there is no data. */
+  period: { from: string; to: string };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────

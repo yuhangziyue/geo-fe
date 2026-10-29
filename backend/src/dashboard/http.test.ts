@@ -156,6 +156,7 @@ describe('simulate', () => {
     const list = await (await listQuestions(get('/api/dashboard/questions?simulate=empty'))).json();
     expect(list).toMatchObject({ items: [], total: 0 });
     expect(list.facets.platforms).toEqual([...PLATFORMS]);
+    expect(list.period).toEqual({ from: '', to: '' });
 
     const detail = await (await getQuestion(get('/api/dashboard/questions/1?simulate=empty'), idCtx(1))).json();
     expect(detail).toMatchObject({ question: null, diagnosis: null, crossPlatform: [] });
@@ -227,6 +228,12 @@ describe('KPI Asked = questions total under the same filter (05 §2.1)', () => {
 });
 
 describe('GET /questions', () => {
+  it('carries the full reporting window so the list page can anchor its range presets', async () => {
+    const body = await (await listQuestions(get('/api/dashboard/questions?from=2026-08-24&to=2026-08-30'))).json();
+    // Unfiltered window, independent of the from/to filter.
+    expect(body.period).toEqual({ from: '2026-08-01', to: '2026-08-30' });
+  });
+
   it('filters by platform + mentioned and by intent', async () => {
     const deepseek = TRUTH_PLATFORMS.find((p) => p.name === 'DeepSeek')!;
     const body = await (await listQuestions(get('/api/dashboard/questions?platform=DeepSeek&mentioned=false'))).json();

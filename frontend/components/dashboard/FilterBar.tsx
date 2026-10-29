@@ -1,7 +1,7 @@
 'use client';
 
 import dayjs from 'dayjs';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DatePicker, Select } from 'antd';
 import { INTENT_LABELS, INTENTS, PLATFORMS, type Facets, type GlobalFilter } from './types';
 import { useGlobalFilter } from './useGlobalFilter';
@@ -17,6 +17,9 @@ interface FilterBarProps {
   facets: Pick<Facets, 'platforms' | 'topics'> | null;
   /** Default true. Hide where intent does not apply. */
   showIntent?: boolean;
+  /** Default true. Hide the bar's own "Clear all" when the host page provides the single clear action
+   *  for both the global filter and its list-only params (question list). */
+  hideClearAll?: boolean;
   /** Full reporting window of the data (first ~ last day), for the quick range presets. Null while loading. */
   range?: { from: string; to: string } | null;
   className?: string;
@@ -48,10 +51,10 @@ function daysBetween(from: string, to: string): number {
  * (All / Day / Week / Month / Quarter) and a Custom trigger (popover with an antd RangePicker, bounded to the
  * data window, writes the URL as soon as both dates are set — 01 §1), all bound to the URL through useGlobalFilter.
  * Platform and Topic search their options; every select clears with antd's allowClear. "Clear all" appears once
- * any filter is set. One row from `sm` up, stacked full-width below it (375). Owner: T0 — F1 / F2 render it,
- * they do not edit it.
+ * any filter is set, beside the Intent select. Layout is a grid: stacked full-width on mobile, 2×2 from `sm`,
+ * one row of four from `lg` — no control ever wraps alone. Owner: T0 — F1 / F2 render it, they do not edit it.
  */
-export function FilterBar({ facets, showIntent = true, range = null, className = '' }: FilterBarProps) {
+export function FilterBar({ facets, showIntent = true, hideClearAll = false, range = null, className = '' }: FilterBarProps) {
   const { filter, setFilter, reset } = useGlobalFilter();
   // Counts every filter in the URL, shown or not: reset clears them all, so "Clear all" must appear whenever one is set.
   const active = Object.values(filter).filter((v) => v !== undefined).length;
@@ -91,9 +94,24 @@ export function FilterBar({ facets, showIntent = true, range = null, className =
         : `${formatDay(filter.from)} – ${formatDay(filter.to)}`
       : 'Custom';
 
+  // Clear all rides in the Intent cell (h-8 matches the Select) so it never orphans in its own grid row.
+  // Hidden when the host page owns the single clear action for global + list-only params (question list).
+  const clearAll =
+    active > 0 && !hideClearAll ? (
+      <button
+        type="button"
+        onClick={reset}
+        className="focus-ring h-8 shrink-0 rounded-md px-2 text-sm font-medium text-brand hover:text-brand-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
+      >
+        Clear all
+      </button>
+    ) : null;
+
+  // Grid, not flex-wrap: explicit rows (2×2 from sm, one row of four from lg) make an orphan-wrapped control
+  // structurally impossible, and the 1fr cells fill the row instead of leaving dead space at the right.
   return (
-    <div role="group" aria-label="Filters" className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end ${className}`}>
-      <div ref={wrapRef} className="relative flex w-full flex-col gap-1 sm:w-auto">
+    <div role="group" aria-label="Filters" className={`grid gap-3 sm:grid-cols-[auto_1fr] lg:grid-cols-[auto_1fr_1fr_1fr] ${className}`}>
+      <div ref={wrapRef} className="relative flex w-full flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-medium text-ink-secondary">Range</span>
           {(filter.from || filter.to) && (
@@ -107,7 +125,7 @@ export function FilterBar({ facets, showIntent = true, range = null, className =
             </button>
           )}
         </div>
-        <div role="group" aria-label="Report range" className="flex items-center rounded-md border border-line bg-surface-sunken p-0.5">
+        <div role="group" aria-label="Report range" className="flex h-8 items-center rounded-md border border-line bg-surface-sunken p-0.5">
           {RANGE_PRESETS.map((p) => {
             const disabled = p.key !== 'all' && (p.key === 'quarter' ? !range || daysBetween(range.from, range.to) < p.days : !to);
             const pressed = activeRange === p.key;
@@ -197,23 +215,17 @@ export function FilterBar({ facets, showIntent = true, range = null, className =
         options={topics.map((t) => ({ value: t, label: t }))}
         onChange={(v) => setFilter({ topic: v || undefined })}
       />
-      {showIntent && (
+      {showIntent ? (
         <FilterSelect
           label="Intent"
           value={filter.intent}
           allLabel="All intents"
           options={INTENTS.map((t) => ({ value: t, label: `${t} · ${INTENT_LABELS[t].name}` }))}
           onChange={(v) => setFilter({ intent: (v || undefined) as GlobalFilter['intent'] })}
+          trailing={clearAll}
         />
-      )}
-      {active > 0 && (
-        <button
-          type="button"
-          onClick={reset}
-          className="h-9 self-start rounded-md px-2 text-sm font-medium text-brand hover:text-brand-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand sm:self-end"
-        >
-          Clear all
-        </button>
+      ) : (
+        clearAll
       )}
     </div>
   );
@@ -226,21 +238,26 @@ function FilterSelect(props: {
   searchable?: boolean;
   options: Array<{ value: string; label: string }>;
   onChange: (value: string | undefined) => void;
+  /** Rendered beside the Select (same 32px row), e.g. the bar's "Clear all". */
+  trailing?: ReactNode;
 }) {
-  const { label, value, allLabel, searchable, options, onChange } = props;
+  const { label, value, allLabel, searchable, options, onChange, trailing } = props;
   return (
-    <div className="flex w-full flex-col gap-1 sm:w-auto">
+    <div className="flex w-full flex-col gap-1">
       <span className="text-xs font-medium text-ink-secondary">{label}</span>
-      <Select
-        aria-label={label}
-        value={value}
-        allowClear
-        showSearch={searchable}
-        placeholder={allLabel}
-        options={options}
-        onChange={(v) => onChange(v ?? undefined)}
-        className="w-full sm:w-48"
-      />
+      <div className="flex w-full gap-2">
+        <Select
+          aria-label={label}
+          value={value}
+          allowClear
+          showSearch={searchable}
+          placeholder={allLabel}
+          options={options}
+          onChange={(v) => onChange(v ?? undefined)}
+          className="w-full"
+        />
+        {trailing}
+      </div>
     </div>
   );
 }

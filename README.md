@@ -24,10 +24,10 @@ pnpm dev          # 自动 seed SQLite 后启动 http://localhost:3000
 |---|---|
 | `pnpm dev` | 开发模式。先把 `data/` 里的 JSON 导入 SQLite（`.local/geo.db`），再起 Next.js |
 | `pnpm demo` | seed → `next build` → `next start`。**演示「后台改内容 → 静态页与 JSON-LD 同步更新」请用这个**：dev 模式每次请求都现场渲染，看不出按需重新生成是否生效 |
-| `pnpm test` | 单元测试（Vitest，backend 296 + frontend 11）：backend 全部领域逻辑，frontend 锁图表 option 的视觉红线 |
+| `pnpm test` | 单元测试（Vitest，backend 297 + frontend 11）：backend 全部领域逻辑，frontend 锁图表 option 的视觉红线 |
 | `pnpm typecheck` | 前端 `tsc --noEmit` |
 | `pnpm lint` | ESLint（`next/core-web-vitals` + `next/typescript`），零警告才通过 |
-| `pnpm e2e` | Playwright 端到端测试（16 条）。自带生产构建，用独立的端口 3100、构建目录 `.next-e2e` 和数据库 `.local/e2e.db`，不影响正在跑的 `pnpm dev`。首次需 `pnpm exec playwright install chromium` |
+| `pnpm e2e` | Playwright 端到端测试（20 条）。自带生产构建，用独立的端口 3100、构建目录 `.next-e2e` 和数据库 `.local/e2e.db`，不影响正在跑的 `pnpm dev`。首次需 `pnpm exec playwright install chromium` |
 
 CI（`.github/workflows/ci.yml`）依次跑 typecheck → lint → test → build → e2e，失败时上传 Playwright 报告。
 
@@ -220,7 +220,7 @@ erDiagram
 - 数据只有回答摘要（`answer_excerpt`），没有完整回答，详情页如实标为 Answer excerpt。
 - 出题方数据是模板生成的：同系列 4 款产品卖点完全相同，卖点与规格有矛盾。页面原样展示，对 SEO 是近似重复内容。
 - 后台没有登录，也不能编辑 FAQ；slug 改名不会生成 301 重定向。
-- 端到端 16 条用例（含 375 / 1024 响应式断言），但没有视觉回归。
+- 端到端 20 条用例（含 375 / 1024 响应式断言、筛选区布局回归），但没有视觉回归。
 
 **再给一周的优先级**
 1. **LLM 全链路实证 + 结构化回查**：配真实 key 跑一段真模型摘要并记录在案（代码已支持 Claude 与 OpenAI 兼容端点）；把 verify 升级为「数字绑定 fact path」的结构化回查（解决 R11）；Ask AI 改为检索 + 生成，回答逐句标来源，检索得分过低时拒答。

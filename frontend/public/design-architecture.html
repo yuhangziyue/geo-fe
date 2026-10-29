@@ -21,13 +21,39 @@
   .p2 .p-badge { background:rgba(56,189,248,.14); color:var(--c2); border:1px solid rgba(56,189,248,.4); }
   .p-head h2 { font-size:20px; }
   .p-head .tagline { color:var(--muted); font-size:13px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-bottom:26px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
-  .card h4 { font-size:14px; margin-bottom:6px; color:var(--ink); display:flex; gap:8px; align-items:center; }
-  .card h4 .dot { width:8px; height:8px; border-radius:99px; flex:none; }
+
+  /* 引子：问题 → 策略 */
+  .lede { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 22px; margin-bottom:26px; }
+  .lede .row { display:flex; gap:16px; align-items:flex-start; }
+  .lede .row + .row { margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); }
+  .lede .lbl { flex:none; width:46px; margin-top:3px; font-size:11px; font-weight:800; letter-spacing:3px; }
+  .p1 .lede .lbl { color:var(--c1); } .p2 .lede .lbl { color:var(--c2); }
+  .lede p { font-size:14px; color:var(--ink); line-height:1.75; }
+  .lede p b { color:var(--ink); }
+
+  /* 核心决策层 */
+  .layer-head { font-size:12px; font-weight:700; letter-spacing:2px; color:var(--muted); margin:0 0 12px; }
+  .decisions { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-bottom:8px; }
+  .d-card { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--c1); border-radius:12px; padding:16px 18px; }
+  .p2 .d-card { border-left-color:var(--c2); }
+  .d-card .no { font-size:12px; font-weight:800; color:var(--c1); letter-spacing:1px; margin-bottom:6px; }
+  .p2 .d-card .no { color:var(--c2); }
+  .d-card h4 { font-size:15px; color:var(--ink); margin-bottom:6px; }
+  .d-card p { font-size:13px; color:var(--muted); }
+  .d-card p b { color:var(--ink); }
+  .d-card code { background:#0F172A; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:12px; color:#CBD5E1; }
+
+  /* 执行细节层：视觉权重让位于核心决策 */
+  .details { margin-top:26px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-bottom:26px; }
+  .card { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:13px 15px; }
+  .card h4 { font-size:13px; margin-bottom:5px; color:var(--ink); display:flex; gap:8px; align-items:center; font-weight:600; }
+  .card h4 .dot { width:7px; height:7px; border-radius:99px; flex:none; opacity:.75; }
   .p1 .card h4 .dot { background:var(--c1); } .p2 .card h4 .dot { background:var(--c2); }
-  .card p { font-size:13px; color:var(--muted); }
-  .card code { background:#0F172A; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:12px; color:#CBD5E1; }
+  .card p { font-size:12.5px; color:var(--muted); }
+  .card p b { color:var(--ink); font-weight:600; }
+  .card code { background:#0F172A; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:11.5px; color:#CBD5E1; }
+
   .arch { background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:22px; margin-bottom:10px; }
   .arch h3 { font-size:15px; margin-bottom:16px; color:var(--ink); }
   .arch svg { width:100%; height:auto; display:block; }
@@ -38,7 +64,7 @@
   .data-note b { color:var(--ink); }
   .data-model { margin-bottom:26px; }
   .dm-head { font-size:15px; margin-bottom:6px; color:var(--ink); }
-  .dm-sub { font-size:12px; color:var(--muted); margin-bottom:16px; }
+  .dm-sub { font-size:12px; color:var(--muted); margin-bottom:16px; line-height:1.7; }
   .dm-box { background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:14px; }
   .er { margin-bottom:8px; }
   .tables { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
@@ -53,6 +79,22 @@
   .tbl .pk { color:var(--warn); font-size:10px; border:1px solid rgba(251,191,36,.35); border-radius:4px; padding:0 4px; margin-left:4px; }
   .tbl .fk { color:var(--c2); font-size:10px; border:1px solid rgba(56,189,248,.35); border-radius:4px; padding:0 4px; margin-left:4px; }
   .tbl .unq { color:var(--good); font-size:10px; border:1px solid rgba(52,211,153,.35); border-radius:4px; padding:0 4px; margin-left:4px; }
+
+  /* 关键取舍表 */
+  .tradeoff { margin:48px 0 0; }
+  .tradeoff h3 { font-size:16px; margin-bottom:4px; }
+  .tradeoff .to-sub { font-size:12.5px; color:var(--muted); margin-bottom:16px; }
+  .to-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:12px; }
+  .to-tbl { width:100%; border-collapse:collapse; background:var(--panel); font-size:12.5px; min-width:760px; }
+  .to-tbl th { background:var(--panel2); text-align:left; padding:9px 12px; font-size:12px; color:var(--muted); border-bottom:1px solid var(--line); white-space:nowrap; }
+  .to-tbl td { padding:9px 12px; border-bottom:1px solid #26324a; vertical-align:top; color:var(--muted); }
+  .to-tbl tr:last-child td { border-bottom:none; }
+  .to-tbl td.d { color:var(--ink); font-weight:600; }
+  .to-tbl td b { color:var(--ink); font-weight:600; }
+  .chip { display:inline-block; font-size:10px; font-weight:700; border-radius:4px; padding:1px 6px; letter-spacing:.5px; }
+  .chip.p1 { color:var(--c1); border:1px solid rgba(34,211,238,.4); }
+  .chip.p2 { color:var(--c2); border:1px solid rgba(56,189,248,.4); }
+
   .common { margin-top:48px; background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line); border-radius:14px; padding:22px 26px; }
   .common h3 { font-size:16px; margin-bottom:14px; }
   .common ul { list-style:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px 22px; }
@@ -70,7 +112,7 @@
 <header>
   <h1>geo-fe · 产品设计理念与架构总览</h1>
   <p>万悉科技 AI 全栈工程师（前端方向）笔试 · AI Visibility Dashboard + 产品知识中心 · 同一仓库同一 Next.js 服务，按路径区分</p>
-  <div class="hero">无任何 API key 可完整运行 · 296+11 单测 · 16 e2e · CI 全部门禁</div>
+  <div class="hero">无任何 API key 可完整运行 · 297+11 单测 · 20 e2e · CI 全部门禁</div>
 </header>
 
 <!-- ================= P1 ================= -->
@@ -83,15 +125,49 @@
     </div>
   </div>
 
-  <div class="grid">
-    <div class="card"><h4><span class="dot"></span>监测 → 诊断 → 行动</h4><p>首页不是「看数据」，是决策工具：漏斗与矩阵负责<b>监测</b>，词云 / 归因 / 趋势负责<b>诊断</b>，行动中心（7 条规则卡 + 执行摘要）是<b>行动</b>出口。</p></div>
-    <div class="card"><h4><span class="dot"></span>指标由明细重算，口径透明</h4><p>不读 summary 文件：可见性 = 提及率、漏斗按行口径 <code>120→85(71%)→56(47%)</code>、取整用五成双——每个口径写在页面上，单测与出题方汇总逐项对账。</p></div>
-    <div class="card"><h4><span class="dot"></span>筛选即 URL，时间以数据末日锚定</h4><p>平台 / Topic / 意图 / 时间窗全部进 URL，可分享可回放；回看窗口锚定数据截止日（Aug 30），杜绝「拿今天对比 8 月数据」的误导。</p></div>
-    <div class="card"><h4><span class="dot"></span>AI 输出不信任，只验证</h4><p>执行摘要每个数字回查事实集，对不上在页面<b>标红</b>；无 key 走确定性模板，mock 模式内置一个故意写错的数字用于演示标红。</p></div>
-    <div class="card"><h4><span class="dot"></span>双视图信息层级</h4><p><code>?tab=</code> 拆出 Data（看结果：漏斗→矩阵→词云→平台|趋势→Topic|意图→信源）与 AI Insights（给行动方向：行动中心独占），状态在 URL。</p></div>
-    <div class="card"><h4><span class="dot"></span>五态矩阵，明度编码</h4><p>recommended / partly / mentioned-only / not-mentioned / <b>not-tracked</b> 用同色相明度递减——「未监测」与「表现差」不混为一谈，该改的是白洞不是深色格。</p></div>
-    <div class="card"><h4><span class="dot"></span>视觉即信号</h4><p>深墨信号台 + 全站唯一青色粗线（对比度 9.88:1）；「● LIVE · as of Aug 30」是<b>静态截止戳</b>，如实标注不装实时流；375px 响应式底线由 e2e 断言。</p></div>
-    <div class="card"><h4><span class="dot"></span>边界诚实</h4><p>S 层无数据显示 Not tracked 而非 0%；自有来源 ⓘ 声明不冒充官方口径；趋势样本 n&lt;8 不画线，不造数据。</p></div>
+  <div class="lede">
+    <div class="row">
+      <span class="lbl">问题</span>
+      <p>出题方给了 120 条真实观测（32 个 Prompt × 5 个 AI 平台 × 30 天）——品牌在 AI 助手的回答里被提及、被推荐、被引用的原始记录。要把它做成<b>能指导行动的产品</b>，而不是一堆图表。</p>
+    </div>
+    <div class="row">
+      <span class="lbl">策略</span>
+      <p>把「看数据」升级为<b>监测 → 诊断 → 行动</b>的闭环：漏斗与矩阵负责监测，词云 / 归因 / 趋势负责诊断，行动中心是行动出口。所有指标由明细重算、口径写在页面上，AI 摘要逐数字回查——整个产品只回答一个问题：<b>下一步该改哪里。</b></p>
+    </div>
+  </div>
+
+  <p class="layer-head">核心决策 · 三条承重墙</p>
+  <div class="decisions">
+    <div class="d-card">
+      <div class="no">决策 01</div>
+      <h4>指标由明细重算，口径透明</h4>
+      <p>不读 summary 文件：可见性 = 提及率、漏斗按行口径 <code>120→85(71%)→56(47%)</code>、取整用五成双——每个口径写在页面上，单测与出题方汇总逐项对账。</p>
+    </div>
+    <div class="d-card">
+      <div class="no">决策 02</div>
+      <h4>AI 输出不信任，只验证</h4>
+      <p>执行摘要每个数字回查事实集，对不上在页面<b>标红</b>；无 key 走确定性模板，mock 模式内置一个故意写错的数字用于演示标红。规则模板 16/16 全过，AI 输出可能带红。</p>
+    </div>
+    <div class="d-card">
+      <div class="no">决策 03</div>
+      <h4>五态矩阵：未监测 ≠ 表现差</h4>
+      <p>recommended / partly / mentioned-only / not-mentioned / <b>not-tracked</b> 用同色相明度递减——「未监测」与「表现差」不混为一谈，<b>该改的是白洞不是深色格</b>。</p>
+    </div>
+    <div class="d-card">
+      <div class="no">决策 04</div>
+      <h4>趋势去噪：单日只有五档</h4>
+      <p>一天一平台一问，单日可见性只能取 0/25/50/75/100，日线毛刺全是假信号——主线用 <b>7 日滚动窗口</b>，日值只作淡色散点；小多图 n&lt;8 不画线，不造数据。</p>
+    </div>
+  </div>
+
+  <div class="details">
+    <p class="layer-head">执行细节</p>
+    <div class="grid">
+      <div class="card"><h4><span class="dot"></span>筛选即 URL，时间锚定数据末日</h4><p>平台 / Topic / 意图 / 时间窗全部进 URL，可分享可回放；回看窗口锚定数据截止日（Aug 30），杜绝「拿今天对比 8 月数据」的误导。</p></div>
+      <div class="card"><h4><span class="dot"></span>双视图信息层级</h4><p><code>?tab=</code> 拆出 Data（看结果：漏斗→矩阵→词云→平台|趋势→Topic|意图→信源）与 AI Insights（给行动方向：行动中心独占），状态在 URL。</p></div>
+      <div class="card"><h4><span class="dot"></span>视觉即信号</h4><p>深墨信号台 + 全站唯一青色粗线（对比度 9.88:1）；「● LIVE · as of Aug 30」是<b>静态截止戳</b>，如实标注不装实时流；375px 响应式底线由 e2e 断言。</p></div>
+      <div class="card"><h4><span class="dot"></span>边界诚实</h4><p>S 层无数据显示 Not tracked 而非 0%；自有来源 ⓘ 声明不冒充官方口径（自有域名是推断的，凡相关指标都带声明）。</p></div>
+    </div>
   </div>
 
   <div class="data-note">
@@ -157,20 +233,50 @@
     </div>
   </div>
 
-  <div class="grid">
-    <div class="card"><h4><span class="dot"></span>数据是唯一真相源</h4><p>Brand → Series → Product → FAQ 实体模型（SQLite + Drizzle，外键 + slug 唯一）；页面与 JSON-LD 渲染<b>同一份</b> ProductDetail，改数据，HTML 与 Schema 自然同步。</p></div>
-    <div class="card"><h4><span class="dot"></span>SSG 优先，按需重生成</h4><p><code>generateStaticParams</code> 构建时预生成完整 HTML（21 产品 + 8 场景）；后台保存 <code>revalidatePath</code> 只重渲染被改的页。爬虫和 AI 抓取拿到完整 HTML——GEO 的立论。</p></div>
-    <div class="card"><h4><span class="dot"></span>不编造</h4><p>JSON-LD 与页面可见内容同源；数据没有价格就不补 <code>offers</code>（Rich Results 报错是照实留档）；<code>dateModified</code> 只在有真实编辑时间时输出。</p></div>
-    <div class="card"><h4><span class="dot"></span>场景是实体，P1→P2 有桥</h4><p>Topic 与场景从不同名，用人工映射表（6 个 Topic → 场景页）；看板「最弱 Topic」和问题详情直接链到该改的场景页——诊断与行动闭环。</p></div>
-    <div class="card"><h4><span class="dot"></span>Ask AI 边界诚实</h4><p>只依据知识库回答；卖点与规格矛盾时两处引用并提示 <code>Sources disagree</code>，不替数据拍板；查不到明确说没有。</p></div>
-    <div class="card"><h4><span class="dot"></span>机器可读出口</h4><p><code>sitemap.xml</code>（只收录公开页）· <code>robots.txt</code>（隔离 dashboard/admin/api）· <code>llms.txt</code>（AI 爬虫地图，后台写后同步再生成）。</p></div>
-    <div class="card"><h4><span class="dot"></span>薄内容保护</h4><p>空场景页 noindex、不进 sitemap / llms.txt、不输出 JSON-LD——空页对 SEO 和 GEO 都是薄内容，不如明确不收录。</p></div>
-    <div class="card"><h4><span class="dot"></span>后台 = 简化 CMS</h4><p>zod 与数据文件共用同一份 schema 校验表单；保存即触发重新生成。规模上限（产品上万）时的演进路径（revalidateTag）已写在 README。</p></div>
+  <div class="lede">
+    <div class="row">
+      <span class="lbl">问题</span>
+      <p>GEO（生成式引擎优化）的立论是：让 AI 系统能准确理解并引用站点内容。给出的是品牌 / 系列 / 产品 / FAQ 的原始 JSON——要让<b>同一份内容</b>同时服务人、搜索引擎与 AI。</p>
+    </div>
+    <div class="row">
+      <span class="lbl">策略</span>
+      <p>数据是唯一真相源：<b>CMS → 实体 → 页面 → Schema 一条链</b>。页面与 JSON-LD 渲染同一份 ProductDetail，SSG 预生成 + 保存后按需重生成——改数据，HTML 与结构化数据自然同步，不出现「页面改了、Schema 没改」的错位。</p>
+    </div>
+  </div>
+
+  <p class="layer-head">核心决策 · 三条承重墙</p>
+  <div class="decisions">
+    <div class="d-card">
+      <div class="no">决策 01</div>
+      <h4>数据是唯一真相源</h4>
+      <p>Brand → Series → Product → FAQ 实体模型（SQLite + Drizzle，外键 + slug 唯一）；页面与 JSON-LD 渲染<b>同一份</b> ProductDetail，改数据，HTML 与 Schema 自然同步。</p>
+    </div>
+    <div class="d-card">
+      <div class="no">决策 02</div>
+      <h4>SSG 优先，按需重生成</h4>
+      <p><code>generateStaticParams</code> 构建时预生成完整 HTML（21 产品 + 8 场景）；后台保存 <code>revalidatePath</code> 只重渲染被改的页。爬虫和 AI 抓取拿到完整 HTML——<b>GEO 的立论</b>。</p>
+    </div>
+    <div class="d-card">
+      <div class="no">决策 03</div>
+      <h4>不编造</h4>
+      <p>JSON-LD 与页面可见内容同源；数据没有价格就不补 <code>offers</code>（Rich Results 报错是照实留档）；<code>dateModified</code> 只在有真实编辑时间时输出，不拿导入时间冒充。</p>
+    </div>
+  </div>
+
+  <div class="details">
+    <p class="layer-head">执行细节</p>
+    <div class="grid">
+      <div class="card"><h4><span class="dot"></span>场景是实体，P1→P2 有桥</h4><p>Topic 与场景从不同名，用人工映射表（6 个 Topic → 场景页）；看板「最弱 Topic」和问题详情直接链到该改的场景页——诊断与行动闭环。</p></div>
+      <div class="card"><h4><span class="dot"></span>Ask AI 边界诚实</h4><p>只依据知识库回答；卖点与规格矛盾时两处引用并提示 <code>Sources disagree</code>，不替数据拍板；查不到明确说没有。</p></div>
+      <div class="card"><h4><span class="dot"></span>机器可读出口</h4><p><code>sitemap.xml</code>（只收录公开页）· <code>robots.txt</code>（隔离 dashboard/admin/api）· <code>llms.txt</code>（AI 爬虫地图，后台写后同步再生成）。</p></div>
+      <div class="card"><h4><span class="dot"></span>薄内容保护</h4><p>空场景页 noindex、不进 sitemap / llms.txt、不输出 JSON-LD——空页对 SEO 和 GEO 都是薄内容，不如明确不收录。</p></div>
+      <div class="card"><h4><span class="dot"></span>后台 = 简化 CMS</h4><p>zod 与数据文件共用同一份 schema 校验表单；保存即触发重新生成。规模上限（产品上万）时的演进路径（revalidateTag）已写在 README。</p></div>
+    </div>
   </div>
 
   <div class="data-model">
     <h3 class="dm-head">数据模型：SQLite + Drizzle，8 张表，slug 全库唯一</h3>
-    <p class="dm-sub">实体关系：Brand 1—N Series 1—N Product；Product 1—N Feature / AI Feature / FAQ / Best For；Scenario 可空关联（best_for 未匹配场景时保留为标签，不改变原始数据含义）。所有外键带 ON DELETE CASCADE（scenario_id 除外）。</p>
+    <p class="dm-sub">实体关系：Brand 1—N Series 1—N Product；Product 1—N Feature / AI Feature / FAQ / Best For；Scenario 可空关联（best_for 未匹配场景时保留为标签，不改变原始数据含义）。<b>只有四张 product 子表的 product_id 外键带 ON DELETE CASCADE</b>；brand_id / series_id / scenario_id 均不带（父行不在运行期删除）。</p>
 
     <div class="dm-box">
       <div class="er">
@@ -234,13 +340,13 @@
 
       <div class="tbl"><div class="t-name">series <span class="unq">slug UNIQUE</span></div><table>
         <tr><td class="f">id<span class="pk">PK</span></td><td class="t">INTEGER</td><td class="d">产品系列</td></tr>
-        <tr><td class="f">brand_id<span class="fk">FK→brand</span></td><td class="t">INTEGER</td><td class="d">系列属于品牌</td></tr>
+        <tr><td class="f">brand_id<span class="fk">FK→brand</span></td><td class="t">INTEGER</td><td class="d">系列属于品牌（无 CASCADE）</td></tr>
         <tr><td class="f">slug / name / description</td><td class="t">TEXT</td><td class="d">Nova / Thermal / Lite / Panoramic / Edge</td></tr>
       </table></div>
 
       <div class="tbl"><div class="t-name">product <span class="unq">slug UNIQUE</span></div><table>
         <tr><td class="f">id<span class="pk">PK</span></td><td class="t">INTEGER</td><td class="d">产品</td></tr>
-        <tr><td class="f">series_id<span class="fk">FK→series</span></td><td class="t">INTEGER</td><td class="d">产品属于系列</td></tr>
+        <tr><td class="f">series_id<span class="fk">FK→series</span></td><td class="t">INTEGER</td><td class="d">产品属于系列（无 CASCADE）</td></tr>
         <tr><td class="f">slug / name</td><td class="t">TEXT</td><td class="d">nova-x8 等</td></tr>
         <tr><td class="f">short_description / overview</td><td class="t">TEXT</td><td class="d">Meta Description 与详情页</td></tr>
         <tr><td class="f">status</td><td class="t">TEXT</td><td class="d">CHECK('active'|'beta')</td></tr>
@@ -269,6 +375,7 @@
       <div class="tbl"><div class="t-name">product_best_for</div><table>
         <tr><td class="f">id<span class="pk">PK</span></td><td class="t">INTEGER</td><td class="d">Best For 关联</td></tr>
         <tr><td class="f">product_id<span class="fk">FK→product</span></td><td class="t">INTEGER</td><td class="d">CASCADE 删除</td></tr>
+        <tr><td class="f">position</td><td class="t">INTEGER</td><td class="d">有序展示</td></tr>
         <tr><td class="f">label</td><td class="t">TEXT</td><td class="d">原始取值，保留不改</td></tr>
         <tr><td class="f">scenario_id<span class="fk">FK→scenario</span></td><td class="t">INTEGER?</td><td class="d">名称完全匹配才链接场景实体；未匹配保留为标签</td></tr>
       </table></div>
@@ -342,6 +449,26 @@
   </div>
 </section>
 
+<!-- ================= 关键取舍 ================= -->
+<section class="tradeoff">
+  <h3>关键取舍：每个选择都写了反方</h3>
+  <p class="to-sub">没有银弹，只有 trade-off。下面是两项目最重要的九个决策——备选了什么、为什么没选、什么条件下换道（完整版见 README §4）。</p>
+  <div class="to-scroll">
+    <table class="to-tbl">
+      <tr><th></th><th>决策</th><th>反方（没选什么）</th><th>为什么不选</th><th>何时换</th></tr>
+      <tr><td><span class="chip p1">P1</span></td><td class="d">指标由明细重算</td><td>直接读 summary 汇总文件</td><td>省事但口径不透明；数据源换成真实明细时接口要重写</td><td>明细到百万行 → 按天/平台/Topic 预聚合，契约不变</td></tr>
+      <tr><td><span class="chip p1">P1</span></td><td class="d">摘要走规则模板 + 逐数字回查</td><td>纯 LLM 生成，更「AI」</td><td>模型可能编数字、评审无法复现；无 key 时演示不了</td><td>有稳定供应商后换评测过的型号；回查升级为数字绑定事实路径</td></tr>
+      <tr><td><span class="chip p1">P1</span></td><td class="d">矩阵五态明度编码</td><td>红绿黄信号色</td><td>「未监测」和「表现差」混为一谈；红绿对色觉障碍不友好</td><td>问题过百时默认只显示 Top-12</td></tr>
+      <tr><td><span class="chip p1">P1</span></td><td class="d">趋势主线用 7 日滚动</td><td>直接画日值折线</td><td>单日只有 0/25/50/75/100 五档，毛刺全是假信号</td><td>单平台日问数上百时，日值有统计意义，回日线</td></tr>
+      <tr><td><span class="chip p1">P1</span></td><td class="d">自有来源按域名判定</td><td>用数据方的 source_type=Official</td><td>13 条 Official 引用只有 1 条在自有域名，混用会把占比算错</td><td>拿到官方口径的域名清单后替换推断值</td></tr>
+      <tr><td><span class="chip p2">P2</span></td><td class="d">SSG + revalidatePath 按需重生成</td><td>纯客户端渲染 / 每请求 SSR</td><td>CSR 爬虫读不到（GEO 立论不成立）；SSR 对几乎不变的内容是浪费</td><td>产品上万、一次编辑重生成页面太多 → revalidateTag 精确失效</td></tr>
+      <tr><td><span class="chip p2">P2</span></td><td class="d">JSON-LD 不补 offers / 评分</td><td>补 mock 价格让 Rich Results 全绿</td><td>编造价格违反结构化数据政策，也违背「不改原始数据含义」</td><td>有真实价格 / 评价数据时补上，争取富摘要</td></tr>
+      <tr><td><span class="chip p2">P2</span></td><td class="d">Ask AI 用关键词检索</td><td>向量检索 / 全部知识塞进提示词</td><td>向量要嵌入模型或外部服务（评审跑不起来）；塞提示词没有检索依据、引用无从标起</td><td>知识上千条、问法发散 → 关键词 + 向量混合检索，LLM 生成逐句标来源</td></tr>
+      <tr><td><span class="chip p2">P2</span></td><td class="d">best_for 完全匹配才链场景</td><td>合并近似标签（Small Retail → Retail）</td><td>改变了原始数据的含义，场景页饱满是假象</td><td>内容团队确认分类后，由人在后台维护「标签 → 场景」映射表</td></tr>
+    </table>
+  </div>
+</section>
+
 <section class="common">
   <h3>跨项目共性设计准则</h3>
   <ul>
@@ -349,11 +476,11 @@
     <li><b>边界诚实</b>——不编造价格/日期/数据；局限在 README 与页面上如实标注</li>
     <li><b>测试断言全部来自人工核算</b>——单测值是对着原始数据算出来的，不是抄实现</li>
     <li><b>无 key 可完整运行</b>——LLM 缺 key 自动降级模板，不阻塞基础功能（题面要求）</li>
-    <li><b>每个设计写「反方 / 何时换」</b>——选择有代价，演进有路径（README §4）</li>
+    <li><b>每个设计写「反方 / 何时换」</b>——选择有代价，演进有路径（见上表，完整版 README §4）</li>
   </ul>
 </section>
 
-<footer>geo-fe · master d696010+50bcd0d · 2026-10-29 · 本页无外部依赖，可离线打开</footer>
+<footer>geo-fe · 2026-10-29 · 本页无外部依赖，可离线打开</footer>
 </div>
 </body>
 </html>

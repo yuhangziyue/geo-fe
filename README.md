@@ -24,10 +24,10 @@ pnpm dev          # 自动 seed SQLite 后启动 http://localhost:3000
 |---|---|
 | `pnpm dev` | 开发模式。先把 `data/` 里的 JSON 导入 SQLite（`.local/geo.db`），再起 Next.js |
 | `pnpm demo` | seed → `next build` → `next start`。**演示「后台改内容 → 静态页与 JSON-LD 同步更新」请用这个**：dev 模式每次请求都现场渲染，看不出按需重新生成是否生效 |
-| `pnpm test` | 后端单测（Vitest，271 条） |
+| `pnpm test` | 单元测试（Vitest，backend 296 + frontend 11）：backend 全部领域逻辑，frontend 锁图表 option 的视觉红线 |
 | `pnpm typecheck` | 前端 `tsc --noEmit` |
 | `pnpm lint` | ESLint（`next/core-web-vitals` + `next/typescript`），零警告才通过 |
-| `pnpm e2e` | Playwright 冒烟测试（15 条）。自带生产构建，用独立的端口 3100、构建目录 `.next-e2e` 和数据库 `.local/e2e.db`，不影响正在跑的 `pnpm dev`。首次需 `pnpm exec playwright install chromium` |
+| `pnpm e2e` | Playwright 端到端测试（16 条）。自带生产构建，用独立的端口 3100、构建目录 `.next-e2e` 和数据库 `.local/e2e.db`，不影响正在跑的 `pnpm dev`。首次需 `pnpm exec playwright install chromium` |
 
 CI（`.github/workflows/ci.yml`）依次跑 typecheck → lint → test → build → e2e，失败时上传 Playwright 报告。
 
@@ -47,7 +47,7 @@ CI（`.github/workflows/ci.yml`）依次跑 typecheck → lint → test → buil
 | 可视化 | ECharts 5 | 只在客户端组件里加载，卸载时 dispose |
 | 类型与校验 | zod | 数据文件、接口出入参、后台表单共用一份 schema |
 | 存储 | P1：只读 JSON；P2：SQLite（better-sqlite3）+ Drizzle ORM | |
-| 测试 | Vitest · Playwright | 单测断言值取自对数据的人工核算；端到端覆盖三态、URL 筛选、后台保存后静态页与 JSON-LD 同步、保存失败、图表数据表、空场景不收录 |
+| 测试 | Vitest · Playwright | 单测断言值取自对数据的人工核算（backend 领域逻辑 + frontend 图表 option）；端到端覆盖三态、URL 筛选、后台保存后静态页与 JSON-LD 同步、保存失败、图表数据表、空场景不收录、375/1024 响应式无横向溢出 |
 
 ---
 
@@ -77,11 +77,11 @@ geo-fe/
 
 | 接口 | 说明 |
 |---|---|
-| `GET /api/dashboard/summary?platform&topic&intent&from&to` | 漏斗 KPI（Asked→Mentioned→Recommended）、平台对比、7 日趋势、Topic、意图分层、覆盖矩阵、信源；`from`/`to` 限定回看窗口（快捷筛选日 / 周 / 月） |
+| `GET /api/dashboard/summary?platform&topic&intent&from&to` | 漏斗 KPI（Asked→Mentioned→Recommended）、平台对比、7 日趋势、Topic、意图分层、覆盖矩阵、信源、平台 14 日趋势（`platformTrends`）；`from`/`to` 限定回看窗口（快捷筛选日 / 周 / 月） |
 | `GET /api/dashboard/questions?platform&topic&intent&from&to&mentioned&recommended&q&page&pageSize` | 问题列表，服务端筛选与分页；附 `facets`（全量平台 / Topic / 意图） |
 | `GET /api/dashboard/questions/:id` | 问题详情、跨平台对比、诊断（短板归因）、引用域名分组、提到的产品与对应场景页（链到 P2） |
 | `GET /api/dashboard/action-center/cards` | 行动中心规则卡（随页加载；7 条规则） |
-| `POST /api/dashboard/action-center/summary` | 执行摘要：`{mode:'ai'}` 有 key 走 Claude、无 key 自动降级规则模板；`{mode:'rules'}` 强制模板。输出逐数字回查 |
+| `POST /api/dashboard/action-center/summary` | 执行摘要：`{mode:'ai'}` 按 provider 配置走 Claude 或 OpenAI 兼容端点（如 DeepSeek）、无 key 自动降级规则模板；`{mode:'rules'}` 强制模板。输出逐数字回查 |
 | `GET /api/knowledge/products?series&scenario` · `GET /api/knowledge/products/:slug` | 产品列表与详情 |
 | `POST /api/knowledge/products` · `PUT /api/knowledge/products/:slug` | 后台新增与编辑，成功后触发页面重新生成 |
 | `POST /api/knowledge/ask` | Ask AI，body `{ question, productSlug? }` |
@@ -111,7 +111,7 @@ erDiagram
 
 数据没有 Prompt id，`prompt_id` 由规范化后的问题文本哈希派生（[repo.ts](backend/src/dashboard/repo.ts)）。行内业务规则（推荐必先提及、提到产品必算提及、`citation_count` = 引用条数）写在 zod 的 `superRefine` 里，数据漂移会在加载时报错，不只校验形状。
 
-v3 把「只看数」升级成「监测 → 诊断 → 行动」：首页第一层是嵌套漏斗 **Asked 120 → Mentioned 85（71%）→ Recommended 56（47%）**（行口径），其下是 32 个问题 × 5 平台的覆盖矩阵（五态，见设计选择 ⑧），行动中心（规则卡 + 执行摘要）是全页的「行动」出口。产品评审后的一次迭代把首页拆成两个视图（`?tab=insights` 切换，状态在 URL）：**Data（看结果）**= 漏斗 → 覆盖矩阵 → 覆盖问题词云 → 平台 | 趋势 → Topic | 意图 → 信源；**AI Insights（给行动方向）**= 行动中心。同时补了以数据末日为锚的快捷回看窗口（All / Day / Week / Month，季在 30 天数据里置灰）、每个图表的右上角 Chart / Table 切换（默认图表）和 375px 响应式底线（e2e 断言无横向溢出）。第二轮迭代（2026-10-28，设计评审见 [docs/design-review/](docs/design-review/) 与定稿 [docs/dashboard-design-optimization-v1.md](docs/dashboard-design-optimization-v1.md)）：筛选区下移重排（标题行 → 视图 Tab 行 → 筛选行）、**Custom 自定义时间范围**（popover 有界日期输入，改日期即写 URL）、趋势卡新增 **By: Overall | Attribution** 归因视图（半程 delta 排行表 + 100% 堆叠份额迁移图 + Intent A/C 7 日细分线，窗口 n≥8 才画线、样本不足不造线，排行每行带 View questions 直通问题列表）。设计思想与数字口径见 [docs/dashboard-design.md](docs/dashboard-design.md)。
+v3 把「只看数」升级成「监测 → 诊断 → 行动」：首页第一层是嵌套漏斗 **Asked 120 → Mentioned 85（71%）→ Recommended 56（47%）**（行口径），其下是 32 个问题 × 5 平台的覆盖矩阵（五态，见设计选择 ⑧），行动中心（规则卡 + 执行摘要）是全页的「行动」出口。产品评审后的一次迭代把首页拆成两个视图（`?tab=insights` 切换，状态在 URL）：**Data（看结果）**= 漏斗 → 覆盖矩阵 → 覆盖问题词云 → 平台 | 趋势 → Topic | 意图 → 信源；**AI Insights（给行动方向）**= 行动中心。同时补了以数据末日为锚的快捷回看窗口（All / Day / Week / Month，季在 30 天数据里置灰）、每个图表的右上角 Chart / Table 切换（默认图表）和 375px 响应式底线（e2e 断言无横向溢出）。第二轮迭代（2026-10-28，设计评审见 [docs/design-review/](docs/design-review/) 与定稿 [docs/dashboard-design-optimization-v1.md](docs/dashboard-design-optimization-v1.md)）：筛选区下移重排（标题行 → 视图 Tab 行 → 筛选行）、**Custom 自定义时间范围**（popover 有界日期输入，改日期即写 URL）、趋势卡新增 **By: Overall | Attribution** 归因视图（半程 delta 排行表 + 100% 堆叠份额迁移图 + Intent A/C 7 日细分线，窗口 n≥8 才画线、样本不足不造线，排行每行带 View questions 直通问题列表）。同日 P1 档把 Overall 趋势整卡转为**深墨信号台**（`#0F172A` 底 + 纯 CSS 网格纹理 + 青色 3px 信号线——全站唯一粗线，对比度 9.88:1；右上「● LIVE · as of <数据末日>」是静态截止戳，不是实时流），Attribution 视图下新增 **5 平台 14 日滚动窗口小多图**（n≥8 才画线，tooltip 带窗口样本数；青 = time signal，与意图 teal 永不同轴）。实现取舍见 [docs/craft-notes.md](docs/craft-notes.md)，视觉样片：[趋势信号台桌面](docs/screenshots/trend-signal-console.png) · [移动端](docs/screenshots/trend-signal-console-mobile.png) · [平台小多图](docs/screenshots/platform-small-multiples.png)。设计思想与数字口径见 [docs/dashboard-design.md](docs/dashboard-design.md)。
 
 ### P2 数据模型
 
@@ -148,7 +148,7 @@ erDiagram
 
 **③ 行动中心：规则卡 + 执行摘要，数字全部可回查**
 - 7 条规则（短板平台、短板 Topic、提及未转推荐、自有来源占比、可见性下滑、无来源无提及、S 层空白）都由明细算出，每条附一个可点开的证据链接（预置筛选的问题列表）。
-- 执行摘要三档：无 key 返回确定性模板（徽标 Rules）；`LLM_PROVIDER=mock` 返回固定演示摘要（徽标 Mock LLM (demo)，内含 1 个刻意写错的数字用于演示标红）；配 `ANTHROPIC_API_KEY` 走 Claude，15 秒超时或失败自动降级模板。Generate 按钮在任何情况下都可用。
+- 执行摘要四态：无 key 返回确定性模板（徽标 Rules）；`LLM_PROVIDER=mock` 返回固定演示摘要（徽标 Mock LLM (demo)，内含 1 个刻意写错的数字用于演示标红）；配 `ANTHROPIC_API_KEY` 走 Claude，或配 `LLM_API_KEY` + `LLM_BASE_URL` + `LLM_MODEL` 走任意 OpenAI 兼容端点（默认 DeepSeek；变量名与题二 brand-writer 一致，`.env` 可直接复用）。provider 解析：`LLM_PROVIDER` 显式优先（拼错回落模板并注明 unknown_provider，缺自己的 key 报 no_api_key 不串路），未设置时按存在的 key 自动选择，双 key 并存确定走 Claude（向后兼容）。所有真实 provider 共用 15 秒超时与失败降级模板。Generate 按钮在任何情况下都可用。
 - 摘要里的每个数字都回查事实集：抽取 → 按「数值 + 单位」比对 → 对不上的在页面上标红（可聚焦、带说明）。规则模板 16/16 全过；AI 输出可能带红。
 - 已知局限（R11）：回查只按「数值 + 单位」比对，不绑定具体事实路径——「DeepSeek 19 mentions」可能因 ChatGPT 恰好也是 19 而被误判为 verified。下一步改为数字绑定 fact path 的结构化回查，本版未实现。
 - 反方：看起来没那么「AI」；但数字可复现、无 key 也能完整演示，评审不会看到模型编数字。
@@ -165,6 +165,7 @@ erDiagram
 - 反方：补一个 Mock 价格就能让 Rich Results Test 全绿。但结构化数据必须和页面可见内容一致，编造价格既违反 Google 的结构化数据政策，也违背「不改原始数据含义」。
 - 何时换：有真实价格或评价数据时补上 `offers` / `aggregateRating`，争取富摘要。
 - `dateModified` 同理：产品表有 `updated_at`，后台保存时写入，JSON-LD 和页面上的「Last updated」据此输出；导入的内容没有编辑时间，就不输出，不拿导入时间冒充修改时间。
+- 校验实录：Schema Markup Validator 零错误（[全页](docs/screenshots/validator-product-jsonld.png) · [Product 节点详情](docs/screenshots/validator-product-jsonld-detail.png)）；Rich Results Test 的 Product 缺 `offers`/`review`/`aggregateRating` 报错照实留档，且该工具要求登录才给预览（[截图](docs/screenshots/rich-results-code-signin-required.png)），产品标记定位是 GEO 实体声明，不是争取富摘要。
 
 **⑥ Ask AI：只依据知识库作答，资料冲突时明说**
 - 关键词检索，「是否支持某功能」类问题优先查规格（数据里这类 FAQ 是答非所问的模板句）；查不到就明确说没有。
@@ -214,15 +215,15 @@ erDiagram
 ## 6. 不足，以及再给一周会先做什么
 
 **当前不足**
-- 行动中心已带 LLM 适配层（Claude / mock / 模板三档），但本机没有真实 API key，演示只能走模板或 mock；数字回查是「数值 + 单位」级（R11），不是结构化 fact-path 级。
+- 行动中心的 LLM 适配层支持 Claude 与 OpenAI 兼容端点（DeepSeek 等）+ mock + 模板，但仓库不含任何真实 key，真模型演示需按 `.env.example` 自配；数字回查是「数值 + 单位」级（R11），不是结构化 fact-path 级。
 - Ask AI 仍是规则版（关键词检索），没有接检索 + 生成；只支持英文提问，同义表达召回弱。
 - 数据只有回答摘要（`answer_excerpt`），没有完整回答，详情页如实标为 Answer excerpt。
 - 出题方数据是模板生成的：同系列 4 款产品卖点完全相同，卖点与规格有矛盾。页面原样展示，对 SEO 是近似重复内容。
 - 后台没有登录，也不能编辑 FAQ；slug 改名不会生成 301 重定向。
-- 端到端 15 条用例（含 375 / 1024 响应式断言），但没有视觉回归。
+- 端到端 16 条用例（含 375 / 1024 响应式断言），但没有视觉回归。
 
 **再给一周的优先级**
-1. **LLM 全链路 + 结构化回查**：配真实 key 跑通 Claude 摘要；把 verify 升级为「数字绑定 fact path」的结构化回查（解决 R11）；Ask AI 改为检索 + 生成，回答逐句标来源，检索得分过低时拒答。
+1. **LLM 全链路实证 + 结构化回查**：配真实 key 跑一段真模型摘要并记录在案（代码已支持 Claude 与 OpenAI 兼容端点）；把 verify 升级为「数字绑定 fact path」的结构化回查（解决 R11）；Ask AI 改为检索 + 生成，回答逐句标来源，检索得分过低时拒答。
 2. **内容质量**：为每个产品补独有内容，解决卖点与规格矛盾，并在后台加「卖点与规格一致性」校验。这对 SEO 去重和 GEO 实体区分都是根本问题。
 3. **后台补齐**：登录、FAQ 编辑、slug 改名自动 301、编辑历史。
 4. **Dashboard 交互**：平台对比切换、问题详情抽屉（拦截路由）。

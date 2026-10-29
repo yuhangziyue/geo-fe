@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>geo-fe · 产品设计理念与架构总览</title>
+<style>
+  :root { --bg:#0F172A; --panel:#1E293B; --panel2:#172033; --line:#334155; --ink:#E2E8F0; --muted:#94A3B8;
+          --c1:#22D3EE; --c2:#38BDF8; --good:#34D399; --warn:#FBBF24; --bad:#F87171; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; line-height:1.6; padding:32px 20px 60px; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  header { text-align:center; margin-bottom:36px; }
+  h1 { font-size:28px; font-weight:700; letter-spacing:.5px; }
+  header p { color:var(--muted); margin-top:8px; font-size:14px; }
+  .hero { display:inline-block; margin-top:14px; font-size:12px; color:var(--c1); border:1px solid rgba(34,211,238,.35); border-radius:999px; padding:4px 14px; }
+  section.project { margin:44px 0; }
+  .p-head { display:flex; align-items:center; gap:14px; border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:22px; }
+  .p-badge { width:44px; height:44px; border-radius:12px; display:grid; place-items:center; font-weight:800; font-size:16px; flex:none; }
+  .p1 .p-badge { background:rgba(34,211,238,.14); color:var(--c1); border:1px solid rgba(34,211,238,.4); }
+  .p2 .p-badge { background:rgba(56,189,248,.14); color:var(--c2); border:1px solid rgba(56,189,248,.4); }
+  .p-head h2 { font-size:20px; }
+  .p-head .tagline { color:var(--muted); font-size:13px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-bottom:26px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .card h4 { font-size:14px; margin-bottom:6px; color:var(--ink); display:flex; gap:8px; align-items:center; }
+  .card h4 .dot { width:8px; height:8px; border-radius:99px; flex:none; }
+  .p1 .card h4 .dot { background:var(--c1); } .p2 .card h4 .dot { background:var(--c2); }
+  .card p { font-size:13px; color:var(--muted); }
+  .card code { background:#0F172A; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:12px; color:#CBD5E1; }
+  .arch { background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:22px; margin-bottom:10px; }
+  .arch h3 { font-size:15px; margin-bottom:16px; color:var(--ink); }
+  .arch svg { width:100%; height:auto; display:block; }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-top:10px; }
+  .legend span { display:flex; align-items:center; gap:6px; }
+  .swatch { width:12px; height:12px; border-radius:3px; display:inline-block; }
+  .common { margin-top:48px; background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line); border-radius:14px; padding:22px 26px; }
+  .common h3 { font-size:16px; margin-bottom:14px; }
+  .common ul { list-style:none; display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px 22px; }
+  .common li { font-size:13px; color:var(--muted); padding-left:22px; position:relative; }
+  .common li::before { content:"◆"; position:absolute; left:0; color:var(--c1); font-size:11px; top:3px; }
+  footer { text-align:center; margin-top:36px; color:var(--muted); font-size:12px; }
+  .tag { display:inline-block; font-size:11px; border-radius:6px; padding:2px 8px; margin-left:6px; vertical-align:2px; }
+  .tag.g { background:rgba(52,211,153,.12); color:var(--good); border:1px solid rgba(52,211,153,.3); }
+  .tag.y { background:rgba(251,191,36,.12); color:var(--warn); border:1px solid rgba(251,191,36,.3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>geo-fe · 产品设计理念与架构总览</h1>
+  <p>万悉科技 AI 全栈工程师（前端方向）笔试 · AI Visibility Dashboard + 产品知识中心 · 同一仓库同一 Next.js 服务，按路径区分</p>
+  <div class="hero">无任何 API key 可完整运行 · 296+11 单测 · 16 e2e · CI 全部门禁</div>
+</header>
+
+<!-- ================= P1 ================= -->
+<section class="project p1">
+  <div class="p-head">
+    <div class="p-badge">P1</div>
+    <div>
+      <h2>AI Visibility Dashboard</h2>
+      <div class="tagline">监测 → 诊断 → 行动 · 数据口径全部由明细重算 · 数字逐字可回查</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h4><span class="dot"></span>监测 → 诊断 → 行动</h4><p>首页不是「看数据」，是决策工具：漏斗与矩阵负责<b>监测</b>，词云 / 归因 / 趋势负责<b>诊断</b>，行动中心（7 条规则卡 + 执行摘要）是<b>行动</b>出口。</p></div>
+    <div class="card"><h4><span class="dot"></span>指标由明细重算，口径透明</h4><p>不读 summary 文件：可见性 = 提及率、漏斗按行口径 <code>120→85(71%)→56(47%)</code>、取整用五成双——每个口径写在页面上，单测与出题方汇总逐项对账。</p></div>
+    <div class="card"><h4><span class="dot"></span>筛选即 URL，时间以数据末日锚定</h4><p>平台 / Topic / 意图 / 时间窗全部进 URL，可分享可回放；回看窗口锚定数据截止日（Aug 30），杜绝「拿今天对比 8 月数据」的误导。</p></div>
+    <div class="card"><h4><span class="dot"></span>AI 输出不信任，只验证</h4><p>执行摘要每个数字回查事实集，对不上在页面<b>标红</b>；无 key 走确定性模板，mock 模式内置一个故意写错的数字用于演示标红。</p></div>
+    <div class="card"><h4><span class="dot"></span>双视图信息层级</h4><p><code>?tab=</code> 拆出 Data（看结果：漏斗→矩阵→词云→平台|趋势→Topic|意图→信源）与 AI Insights（给行动方向：行动中心独占），状态在 URL。</p></div>
+    <div class="card"><h4><span class="dot"></span>五态矩阵，明度编码</h4><p>recommended / partly / mentioned-only / not-mentioned / <b>not-tracked</b> 用同色相明度递减——「未监测」与「表现差」不混为一谈，该改的是白洞不是深色格。</p></div>
+    <div class="card"><h4><span class="dot"></span>视觉即信号</h4><p>深墨信号台 + 全站唯一青色粗线（对比度 9.88:1）；「● LIVE · as of Aug 30」是<b>静态截止戳</b>，如实标注不装实时流；375px 响应式底线由 e2e 断言。</p></div>
+    <div class="card"><h4><span class="dot"></span>边界诚实</h4><p>S 层无数据显示 Not tracked 而非 0%；自有来源 ⓘ 声明不冒充官方口径；趋势样本 n&lt;8 不画线，不造数据。</p></div>
+  </div>
+
+  <div class="arch">
+    <h3>架构：JSON 明细 → 领域聚合 → API → 客户端渲染，LLM 适配独立成层</h3>
+    <svg viewBox="0 0 1040 300" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC, sans-serif">
+      <defs>
+        <marker id="a1" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#64748B"/></marker>
+        <marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#22D3EE"/></marker>
+      </defs>
+      <rect x="20" y="70" width="180" height="86" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="110" y="102" text-anchor="middle" fill="#E2E8F0" font-size="13" font-weight="600">数据（只读）</text>
+      <text x="110" y="122" text-anchor="middle" fill="#94A3B8" font-size="11">project1_dashboard/*.json</text>
+      <text x="110" y="140" text-anchor="middle" fill="#94A3B8" font-size="11">明细即真相源，zod 校验</text>
+
+      <rect x="300" y="70" width="220" height="86" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="410" y="100" text-anchor="middle" fill="#E2E8F0" font-size="13" font-weight="600">backend 领域聚合层</text>
+      <text x="410" y="120" text-anchor="middle" fill="#94A3B8" font-size="11">funnel / matrix / trend /</text>
+      <text x="410" y="136" text-anchor="middle" fill="#94A3B8" font-size="11">attribution / sources / intents / action</text>
+      <text x="410" y="152" text-anchor="middle" fill="#64748B" font-size="10">纯函数，无框架依赖，单测断言人工真值</text>
+
+      <rect x="620" y="70" width="170" height="86" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="705" y="100" text-anchor="middle" fill="#E2E8F0" font-size="13" font-weight="600">API 层</text>
+      <text x="705" y="120" text-anchor="middle" fill="#94A3B8" font-size="11">/api/dashboard/*</text>
+      <text x="705" y="136" text-anchor="middle" fill="#94A3B8" font-size="11">RFC 9457 错误体</text>
+      <text x="705" y="152" text-anchor="middle" fill="#94A3B8" font-size="11">?simulate= 三态开关</text>
+
+      <rect x="880" y="70" width="140" height="86" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="950" y="100" text-anchor="middle" fill="#E2E8F0" font-size="13" font-weight="600">客户端渲染</text>
+      <text x="950" y="120" text-anchor="middle" fill="#94A3B8" font-size="11">ECharts 组件</text>
+      <text x="950" y="136" text-anchor="middle" fill="#94A3B8" font-size="11">Chart⇄Table</text>
+      <text x="950" y="152" text-anchor="middle" fill="#94A3B8" font-size="11">Loading/Error/Empty</text>
+
+      <line x1="200" y1="113" x2="298" y2="113" stroke="#64748B" stroke-width="1.6" marker-end="url(#a1)"/>
+      <line x1="520" y1="113" x2="618" y2="113" stroke="#64748B" stroke-width="1.6" marker-end="url(#a1)"/>
+      <line x1="790" y1="113" x2="878" y2="113" stroke="#64748B" stroke-width="1.6" marker-end="url(#a1)"/>
+
+      <rect x="300" y="205" width="360" height="78" rx="10" fill="#172033" stroke="#22D3EE" stroke-dasharray="4 3"/>
+      <text x="480" y="231" text-anchor="middle" fill="#22D3EE" font-size="12" font-weight="600">LLM 适配层（独立分支，不阻塞主链路）</text>
+      <text x="480" y="250" text-anchor="middle" fill="#94A3B8" font-size="11">Claude / OpenAI 兼容 / mock / 规则模板 — 无 key 自动降级</text>
+      <text x="480" y="268" text-anchor="middle" fill="#94A3B8" font-size="11">verify 数字回查：抽取 → 数值+单位比对 → 标红</text>
+      <line x1="410" y1="156" x2="410" y2="203" stroke="#22D3EE" stroke-width="1.4" marker-end="url(#a2)"/>
+      <text x="424" y="182" fill="#22D3EE" font-size="10">action-center/summary</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#1E293B;border:1px solid #475569"></span>核心链路</span>
+      <span><span class="swatch" style="background:#172033;border:1px solid #22D3EE"></span>LLM 加分项（可完全离线演示）</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= P2 ================= -->
+<section class="project p2">
+  <div class="p-head">
+    <div class="p-badge">P2</div>
+    <div>
+      <h2>AI 产品知识中心</h2>
+      <div class="tagline">数据是唯一真相源 · CMS → 实体 → 页面 → Schema 一条链 · 页面同时适合人、搜索引擎与 AI</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h4><span class="dot"></span>数据是唯一真相源</h4><p>Brand → Series → Product → FAQ 实体模型（SQLite + Drizzle，外键 + slug 唯一）；页面与 JSON-LD 渲染<b>同一份</b> ProductDetail，改数据，HTML 与 Schema 自然同步。</p></div>
+    <div class="card"><h4><span class="dot"></span>SSG 优先，按需重生成</h4><p><code>generateStaticParams</code> 构建时预生成完整 HTML（21 产品 + 8 场景）；后台保存 <code>revalidatePath</code> 只重渲染被改的页。爬虫和 AI 抓取拿到完整 HTML——GEO 的立论。</p></div>
+    <div class="card"><h4><span class="dot"></span>不编造</h4><p>JSON-LD 与页面可见内容同源；数据没有价格就不补 <code>offers</code>（Rich Results 报错是照实留档）；<code>dateModified</code> 只在有真实编辑时间时输出。</p></div>
+    <div class="card"><h4><span class="dot"></span>场景是实体，P1→P2 有桥</h4><p>Topic 与场景从不同名，用人工映射表（6 个 Topic → 场景页）；看板「最弱 Topic」和问题详情直接链到该改的场景页——诊断与行动闭环。</p></div>
+    <div class="card"><h4><span class="dot"></span>Ask AI 边界诚实</h4><p>只依据知识库回答；卖点与规格矛盾时两处引用并提示 <code>Sources disagree</code>，不替数据拍板；查不到明确说没有。</p></div>
+    <div class="card"><h4><span class="dot"></span>机器可读出口</h4><p><code>sitemap.xml</code>（只收录公开页）· <code>robots.txt</code>（隔离 dashboard/admin/api）· <code>llms.txt</code>（AI 爬虫地图，后台写后同步再生成）。</p></div>
+    <div class="card"><h4><span class="dot"></span>薄内容保护</h4><p>空场景页 noindex、不进 sitemap / llms.txt、不输出 JSON-LD——空页对 SEO 和 GEO 都是薄内容，不如明确不收录。</p></div>
+    <div class="card"><h4><span class="dot"></span>后台 = 简化 CMS</h4><p>zod 与数据文件共用同一份 schema 校验表单；保存即触发重新生成。规模上限（产品上万）时的演进路径（revalidateTag）已写在 README。</p></div>
+  </div>
+
+  <div class="arch">
+    <h3>架构：SQLite 实体模型 → SSG 输出 + 机器出口，后台编辑形成重新生成闭环</h3>
+    <svg viewBox="0 0 1040 320" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC, sans-serif">
+      <defs>
+        <marker id="b1" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#64748B"/></marker>
+        <marker id="b2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#38BDF8"/></marker>
+        <marker id="b3" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#FBBF24"/></marker>
+      </defs>
+      <rect x="20" y="40" width="170" height="80" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="105" y="68" text-anchor="middle" fill="#E2E8F0" font-size="13" font-weight="600">SQLite</text>
+      <text x="105" y="88" text-anchor="middle" fill="#94A3B8" font-size="11">brand/series/products/</text>
+      <text x="105" y="104" text-anchor="middle" fill="#94A3B8" font-size="11">faqs/scenarios</text>
+
+      <rect x="290" y="40" width="200" height="80" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="390" y="68" text-anchor="middle" fill="#E2E8F0" font-size="13" font-weight="600">backend 服务</text>
+      <text x="390" y="88" text-anchor="middle" fill="#94A3B8" font-size="11">repo（查询/写入）</text>
+      <text x="390" y="104" text-anchor="middle" fill="#94A3B8" font-size="11">jsonld 构建 · ask 检索</text>
+
+      <rect x="590" y="10" width="200" height="70" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="690" y="38" text-anchor="middle" fill="#E2E8F0" font-size="12" font-weight="600">SSG 页面</text>
+      <text x="690" y="56" text-anchor="middle" fill="#94A3B8" font-size="11">列表 / 详情 / 场景</text>
+      <text x="690" y="72" text-anchor="middle" fill="#94A3B8" font-size="11">21+8 个静态 HTML</text>
+
+      <rect x="590" y="110" width="200" height="70" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="690" y="138" text-anchor="middle" fill="#E2E8F0" font-size="12" font-weight="600">机器出口</text>
+      <text x="690" y="156" text-anchor="middle" fill="#94A3B8" font-size="11">JSON-LD / sitemap</text>
+      <text x="690" y="172" text-anchor="middle" fill="#94A3B8" font-size="11">robots / llms.txt</text>
+
+      <rect x="860" y="10" width="160" height="70" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="940" y="38" text-anchor="middle" fill="#E2E8F0" font-size="12" font-weight="600">用户 / 爬虫 / AI</text>
+      <text x="940" y="56" text-anchor="middle" fill="#94A3B8" font-size="11">完整 HTML +</text>
+      <text x="940" y="72" text-anchor="middle" fill="#94A3B8" font-size="11">结构化数据</text>
+
+      <rect x="860" y="110" width="160" height="70" rx="10" fill="#1E293B" stroke="#475569"/>
+      <text x="940" y="138" text-anchor="middle" fill="#E2E8F0" font-size="12" font-weight="600">Ask AI</text>
+      <text x="940" y="156" text-anchor="middle" fill="#94A3B8" font-size="11">关键词检索</text>
+      <text x="940" y="172" text-anchor="middle" fill="#94A3B8" font-size="11">回答附来源链接</text>
+
+      <rect x="290" y="210" width="360" height="78" rx="10" fill="#172033" stroke="#FBBF24" stroke-dasharray="4 3"/>
+      <text x="470" y="236" text-anchor="middle" fill="#FBBF24" font-size="12" font-weight="600">后台编辑（简化 CMS）</text>
+      <text x="470" y="255" text-anchor="middle" fill="#94A3B8" font-size="11">/admin/products · zod 校验（与数据文件同一 schema）</text>
+      <text x="470" y="273" text-anchor="middle" fill="#94A3B8" font-size="11">保存 → 写 SQLite → revalidatePath → 重新生成</text>
+
+      <line x1="190" y1="80" x2="288" y2="80" stroke="#64748B" stroke-width="1.6" marker-end="url(#b1)"/>
+      <line x1="490" y1="70" x2="588" y2="55" stroke="#64748B" stroke-width="1.6" marker-end="url(#b1)"/>
+      <line x1="490" y1="100" x2="588" y2="140" stroke="#64748B" stroke-width="1.6" marker-end="url(#b1)"/>
+      <line x1="790" y1="50" x2="858" y2="50" stroke="#64748B" stroke-width="1.6" marker-end="url(#b1)"/>
+      <line x1="790" y1="140" x2="858" y2="140" stroke="#64748B" stroke-width="1.6" marker-end="url(#b1)"/>
+      <line x1="470" y1="120" x2="470" y2="208" stroke="#FBBF24" stroke-width="1.4" stroke-dasharray="3 3" marker-end="url(#b3)"/>
+      <text x="484" y="168" fill="#FBBF24" font-size="10">API：POST/PUT products</text>
+      <line x1="470" y1="210" x2="300" y2="250" stroke="#38BDF8" stroke-width="1.4" marker-end="url(#b2)"/>
+      <text x="330" y="252" fill="#38BDF8" font-size="10">revalidatePath 写回</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#1E293B;border:1px solid #475569"></span>读取链路（SSG 静态输出）</span>
+      <span><span class="swatch" style="background:#172033;border:1px solid #FBBF24"></span>写入闭环（CMS 保存 → 重新生成）</span>
+    </div>
+  </div>
+</section>
+
+<section class="common">
+  <h3>跨项目共性设计准则</h3>
+  <ul>
+    <li><b>数据是唯一真相源</b>——页面、JSON-LD、机器出口全部从同一份数据渲染，不维护第二份真相</li>
+    <li><b>边界诚实</b>——不编造价格/日期/数据；局限在 README 与页面上如实标注</li>
+    <li><b>测试断言全部来自人工核算</b>——单测值是对着原始数据算出来的，不是抄实现</li>
+    <li><b>无 key 可完整运行</b>——LLM 缺 key 自动降级模板，不阻塞基础功能（题面要求）</li>
+    <li><b>每个设计写「反方 / 何时换」</b>——选择有代价，演进有路径（README §4）</li>
+  </ul>
+</section>
+
+<footer>geo-fe · master d696010+50bcd0d · 2026-10-29 · 本页无外部依赖，可离线打开</footer>
+</div>
+</body>
+</html>
